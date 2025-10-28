@@ -97,6 +97,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 - **`submit`** - Mark task as complete
 - **`classify_task`** - Classify task type for workflow routing
 
+## GNU coreutils Mapping
+
+A companion Markdown report mapping CATS tools to GNU coreutils and common Unix utilities has been added at docs/gnu_coreutils_equivalents.md. This provides example commands, notes about differences, and guidance for replacing CATS tools with shell equivalents where feasible.
+
+
+
 ## Tool Execution Patterns
 
 ### Using Named Arguments (Recommended for LLMs)
