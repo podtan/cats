@@ -6,43 +6,39 @@ use std::collections::HashMap;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Create registry to get available tools dynamically
+    let registry = create_tool_registry();
+    
+    // Collect tool information (name, description) with static lifetime
+    let tool_info: Vec<(&'static str, &'static str)> = registry
+        .list_tools()
+        .into_iter()
+        .filter_map(|name| {
+            registry.get_tool(&name).map(|tool| {
+                let name_static: &'static str = Box::leak(name.into_boxed_str());
+                let desc_static: &'static str = Box::leak(tool.description().to_string().into_boxed_str());
+                (name_static, desc_static)
+            })
+        })
+        .collect();
+    
     let mut app = Command::new("cats")
-        .version("0.1.0")
+        .version("0.1.1")
         .about("Coding Agent ToolS - A comprehensive toolkit for building AI-powered coding agents")
         .subcommand_required(true)
         .arg_required_else_help(true);
 
-    // Add predefined subcommands for known tools
-    let tool_commands = vec![
-        ("open", "Opens the file at the given path in the editor"),
-        ("goto", "Moves the window to show specific line number"),
-        ("scroll_up", "Moves the window up by the window size"),
-        ("scroll_down", "Moves the window down by the window size"),
-        ("create", "Creates and opens a new file with the given name"),
-        (
-            "find_file",
-            "Finds all files with the given name or pattern",
-        ),
-        ("search_file", "Searches for text in a specific file"),
-        ("search_dir", "Searches for text in all files in directory"),
-        ("edit", "Edit files with search/replace"),
-        ("insert", "Insert text into files"),
-        (
-            "_state",
-            "Display current state of open files and tool context",
-        ),
-        ("filemap", "Generate project file structure map"),
-        ("submit", "Submit completed task"),
-    ];
-
-    for (name, description) in &tool_commands {
+    // Dynamically add subcommands from collected tool info
+    for (tool_name, description) in &tool_info {
         app = app.subcommand(
-            Command::new(*name).about(*description).arg(
-                Arg::new("args")
-                    .help("Tool arguments")
-                    .num_args(0..)
-                    .value_name("ARGS"),
-            ),
+            Command::new(*tool_name)
+                .about(*description)
+                .arg(
+                    Arg::new("args")
+                        .help("Tool arguments")
+                        .num_args(0..)
+                        .value_name("ARGS"),
+                ),
         );
     }
 

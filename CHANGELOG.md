@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2025-10-29
+
+### Fixed
+- CLI now dynamically lists all available tools from registry instead of hardcoded subset
+- Removed non-existent tools (`edit`, `insert`) from CLI help output
+- Added missing tools to CLI help: `run_command`, all editing tools (`create_file`, `replace_text`, `insert_text`, `delete_text`, `delete_line`, `overwrite_file`, `delete_function`), file management tools (`delete_path`, `move_path`, `copy_path`, `create_directory`), and `classify_task`
+- CLI help output now stays automatically synchronized with the tool registry
+
 ## [0.1.0] - 2025-10-26
 
 ### Added
