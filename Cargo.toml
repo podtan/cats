@@ -1,6 +1,9 @@
+[workspace]
+# Empty workspace to prevent being included in parent workspace
+
 [package]
 name = "cats"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 description = "Coding Agent ToolS - A comprehensive toolkit for building AI-powered coding agents"
 license = "MIT OR Apache-2.0"

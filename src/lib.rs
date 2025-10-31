@@ -6,10 +6,11 @@
 //! ## Features
 //!
 //! - **File Navigation**: Windowed file viewing, line navigation, scrolling
-//! - **Search Tools**: File discovery, content search across files and directories  
+//! - **Search Tools**: File discovery, content search across files and directories
 //! - **File Editing**: Search/replace editing with integrated linting
 //! - **State Management**: Persistent tool state and session history
 //! - **Utility Tools**: Project structure visualization, task submission
+//! - **LLM Integration**: JSON conversion, tool execution, result handling for LLM providers
 //!
 //! ## Usage
 //!
@@ -29,6 +30,7 @@ pub mod editing;
 pub mod execution;
 pub mod file_navigation;
 pub mod linting;
+pub mod llm;
 pub mod search;
 pub mod state;
 pub mod utils;
@@ -42,6 +44,15 @@ pub use editing::{
 };
 pub use execution::RunCommandTool;
 pub use file_navigation::{CreateTool, GotoTool, OpenTool, ScrollTool, WindowedFile};
+pub use llm::{
+    assistant::{generate_assistant_content, ToolCallInfo},
+    converter::json_to_tool_args,
+    executor::{
+        execute_tool_calls, execute_tool_calls_structured, ExecutionCallback, NoOpCallback,
+        ToolCallRequest, ToolExecutionResult,
+    },
+    result_handler::{handle_large_result, ResultHandlerConfig},
+};
 pub use search::{FindFileTool, SearchDirTool, SearchFileTool};
 pub use state::{StateTool, ToolState};
 pub use utils::{ClassifyTaskTool, CountTokensTool, FilemapTool, SubmitTool};
