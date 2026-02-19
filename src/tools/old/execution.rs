@@ -4,7 +4,7 @@
 //! in a controlled and safe manner, replacing direct bash command execution.
 
 use crate::core::{Tool, ToolArgs, ToolError, ToolResult};
-use crate::state::ToolState;
+use super::state::ToolState;
 use anyhow::Result;
 use serde_json;
 use std::process::{Command, Stdio};

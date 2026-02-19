@@ -4,7 +4,7 @@
 //! like delete, move, and copy with simple interfaces.
 
 use crate::core::{Tool, ToolArgs, ToolError, ToolResult};
-use crate::state::ToolState;
+use crate::tools::old::state::ToolState;
 use anyhow::Result;
 use std::fs;
 use std::path::PathBuf;
@@ -120,7 +120,7 @@ impl Tool for DeletePathTool {
 
         // Use centralized filter configuration for protected directories instead of a hardcoded list.
         // Always protect "src" by default, and also protect any directory listed in the search filtering exclude_dirs.
-        let filter = crate::search::filtering::ConfigurableFilter::new(None);
+        let filter = crate::tools::old::search::ConfigurableFilter::new(None);
         let mut protected = false;
 
         if path_name == "src" {

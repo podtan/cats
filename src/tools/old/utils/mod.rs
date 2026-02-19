@@ -1,14 +1,14 @@
 //! Utility tools for project analysis and task completion
 
+use super::state::ToolState;
 use crate::core::{Tool, ToolArgs, ToolError, ToolResult};
-use crate::state::ToolState;
 use anyhow::Result;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use walkdir::WalkDir;
 
-use crate::search::ConfigurableFilter;
+use super::search::ConfigurableFilter;
 
 mod count_tokens;
 

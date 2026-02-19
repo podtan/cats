@@ -12,6 +12,15 @@
 //! - **Utility Tools**: Project structure visualization, task submission
 //! - **LLM Integration**: JSON conversion, tool execution, result handling for LLM providers
 //!
+//! ## Tool Sets
+//!
+//! CATS supports multiple tool sets via feature flags:
+//!
+//! - `old` (default): Original CATS tools
+//! - `opencode`: OpenCode-compatible tools (coming soon)
+//! - `gemini-cli`: Google Gemini CLI tools (coming soon)
+//! - `claude-code`: Claude Code-compatible tools (coming soon)
+//!
 //! ## Usage
 //!
 //! ```rust,no_run
@@ -26,24 +35,48 @@
 //! ```
 
 pub mod core;
-pub mod editing;
-pub mod execution;
-pub mod file_navigation;
-pub mod linting;
 pub mod llm;
-pub mod search;
-pub mod state;
-pub mod utils;
+pub mod tools;
+
+// Conditional module exports for backward compatibility
+#[cfg(feature = "old")]
+pub use tools::old as editing;
+#[cfg(feature = "old")]
+pub use tools::old as execution;
+#[cfg(feature = "old")]
+pub use tools::old as file_navigation;
+#[cfg(feature = "old")]
+pub use tools::old as linting;
+#[cfg(feature = "old")]
+pub use tools::old as search;
+#[cfg(feature = "old")]
+pub use tools::old as state;
+#[cfg(feature = "old")]
+pub use tools::old as utils;
 
 // Re-export main types
 pub use core::{Tool, ToolArgs, ToolRegistry, ToolResult};
-pub use editing::{
+
+// Re-export tools from the active tool set
+#[cfg(feature = "old")]
+pub use tools::old::{
+    // Editing tools
     CopyPathTool, CreateDirectoryTool, CreateFileTool, DeleteFunctionTool, DeleteLineTool,
     DeletePathTool, DeleteTextTool, InsertTextTool, MovePathTool, OverwriteFileTool,
     ReplaceTextTool,
+    // Execution tools
+    RunCommandTool,
+    // File navigation tools
+    CreateTool, GotoTool, OpenTool, ScrollTool, WindowedFile,
+    // Search tools
+    ConfigurableFilter, FindFileTool, SearchDirTool, SearchFileTool,
+    // State tools
+    StateTool, ToolState,
+    // Utility tools
+    ClassifyTaskTool, CountTokensTool, FilemapTool, SubmitTool,
 };
-pub use execution::RunCommandTool;
-pub use file_navigation::{CreateTool, GotoTool, OpenTool, ScrollTool, WindowedFile};
+
+// Re-export LLM integration
 pub use llm::{
     assistant::{generate_assistant_content, ToolCallInfo},
     converter::json_to_tool_args,
@@ -53,64 +86,13 @@ pub use llm::{
     },
     result_handler::{handle_large_result, ResultHandlerConfig},
 };
-pub use search::{FindFileTool, SearchDirTool, SearchFileTool};
-pub use state::{StateTool, ToolState};
-pub use utils::{ClassifyTaskTool, CountTokensTool, FilemapTool, SubmitTool};
 
-/// Initialize the tool registry with all available tools (backward-compatible)
-pub fn create_tool_registry() -> ToolRegistry {
-    create_tool_registry_with_open_window_size(None)
-}
+// Re-export create_tool_registry functions from the active tool set
+#[cfg(feature = "old")]
+pub use tools::old::{create_tool_registry, create_tool_registry_with_open_window_size};
 
-/// Initialize the tool registry with a configurable default window size for the "open" tool
-pub fn create_tool_registry_with_open_window_size(open_window_size: Option<usize>) -> ToolRegistry {
-    let mut registry = ToolRegistry::new();
-
-    // Command execution tool (NEW - replaces direct bash)
-    registry.register(Box::new(execution::RunCommandTool::new()));
-
-    // File navigation tools
-    registry.register(Box::new(OpenTool::new_with_open_window_size(
-        open_window_size,
-    )));
-    registry.register(Box::new(GotoTool::new()));
-    registry.register(Box::new(ScrollTool::new("scroll_up", true)));
-    registry.register(Box::new(ScrollTool::new("scroll_down", false)));
-    registry.register(Box::new(CreateTool::new()));
-
-    // Search tools
-    registry.register(Box::new(FindFileTool::new()));
-    registry.register(Box::new(SearchFileTool::new()));
-    registry.register(Box::new(SearchDirTool::new()));
-
-    // Editing tools - New specialized tools
-    registry.register(Box::new(CreateFileTool::new()));
-    registry.register(Box::new(ReplaceTextTool::new()));
-    registry.register(Box::new(InsertTextTool::new()));
-    registry.register(Box::new(DeleteTextTool::new()));
-    registry.register(Box::new(DeleteLineTool::new()));
-    registry.register(Box::new(OverwriteFileTool::new()));
-    registry.register(Box::new(
-        editing::specialized_tools::DeleteFunctionTool::new(),
-    ));
-
-    // File management tools
-    registry.register(Box::new(DeletePathTool::new()));
-    registry.register(Box::new(MovePathTool::new()));
-    registry.register(Box::new(CopyPathTool::new()));
-    registry.register(Box::new(CreateDirectoryTool::new()));
-
-    // State management
-    registry.register(Box::new(StateTool::new()));
-
-    // Utility tools
-    registry.register(Box::new(CountTokensTool::new()));
-    registry.register(Box::new(FilemapTool::new()));
-    registry.register(Box::new(SubmitTool::new()));
-    registry.register(Box::new(ClassifyTaskTool::new()));
-
-    registry
-}
+#[cfg(feature = "opencode")]
+pub use tools::opencode::{create_tool_registry, create_tool_registry_with_open_window_size};
 
 #[cfg(test)]
 mod tests {

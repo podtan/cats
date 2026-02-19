@@ -1,7 +1,7 @@
 //! Search tools for file discovery and content search
 
+use super::state::ToolState;
 use crate::core::{Tool, ToolArgs, ToolError, ToolResult};
-use crate::state::ToolState;
 use anyhow::Result;
 use regex::Regex;
 use std::collections::HashMap;

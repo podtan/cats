@@ -1,5 +1,5 @@
 use crate::core::{Tool, ToolArgs, ToolError, ToolResult};
-use crate::state::ToolState;
+use crate::tools::old::state::ToolState;
 use anyhow::Result;
 use std::fs;
 use std::path::PathBuf;
@@ -103,7 +103,7 @@ impl Tool for CountTokensTool {
 mod tests {
     use super::*;
     use crate::core::ToolArgs;
-    use crate::state::ToolState;
+    use crate::tools::old::state::ToolState;
     use std::sync::{Arc, Mutex};
 
     #[test]

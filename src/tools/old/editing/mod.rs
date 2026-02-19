@@ -10,8 +10,8 @@ pub use specialized_tools::{
     OverwriteFileTool, ReplaceTextTool,
 };
 
+use super::state::ToolState;
 use crate::core::{Tool, ToolArgs, ToolError, ToolResult};
-use crate::state::ToolState;
 use anyhow::Result;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -991,7 +991,7 @@ impl EditTool {
 mod tests {
     use super::*;
     use crate::core::Tool;
-    use crate::state::ToolState;
+    use crate::tools::old::state::ToolState;
     use std::collections::HashMap;
 
     #[test]

@@ -2,8 +2,8 @@
 //!
 //! Provides windowed file viewing, line navigation, and file creation
 
+use super::state::ToolState;
 use crate::core::{Tool, ToolArgs, ToolError, ToolResult};
-use crate::state::ToolState;
 use anyhow::Result;
 use std::fs;
 use std::path::PathBuf;

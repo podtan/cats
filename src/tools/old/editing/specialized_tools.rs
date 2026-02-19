@@ -5,7 +5,7 @@
 //! like Grok-Code-Fast-1.
 
 use crate::core::{Tool, ToolArgs, ToolError, ToolResult};
-use crate::state::ToolState;
+use crate::tools::old::state::ToolState;
 use anyhow::Result;
 use std::fs;
 use std::path::PathBuf;
