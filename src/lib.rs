@@ -17,7 +17,7 @@
 //! CATS supports multiple tool sets via feature flags:
 //!
 //! - `old` (default): Original CATS tools
-//! - `opencode`: OpenCode-compatible tools (coming soon)
+//! - `opencode`: OpenCode-compatible tools
 //! - `gemini-cli`: Google Gemini CLI tools (coming soon)
 //! - `claude-code`: Claude Code-compatible tools (coming soon)
 //!
@@ -36,26 +36,14 @@
 
 pub mod core;
 pub mod llm;
+pub mod state;
 pub mod tools;
-
-// Conditional module exports for backward compatibility
-#[cfg(feature = "old")]
-pub use tools::old as editing;
-#[cfg(feature = "old")]
-pub use tools::old as execution;
-#[cfg(feature = "old")]
-pub use tools::old as file_navigation;
-#[cfg(feature = "old")]
-pub use tools::old as linting;
-#[cfg(feature = "old")]
-pub use tools::old as search;
-#[cfg(feature = "old")]
-pub use tools::old as state;
-#[cfg(feature = "old")]
-pub use tools::old as utils;
 
 // Re-export main types
 pub use core::{Tool, ToolArgs, ToolRegistry, ToolResult};
+
+// Re-export state types
+pub use state::{FileState, StateSnapshot, ToolState};
 
 // Re-export tools from the active tool set
 #[cfg(feature = "old")]
@@ -71,9 +59,15 @@ pub use tools::old::{
     // Search tools
     ConfigurableFilter, FindFileTool, SearchDirTool, SearchFileTool,
     // State tools
-    StateTool, ToolState,
+    StateTool,
     // Utility tools
     ClassifyTaskTool, CountTokensTool, FilemapTool, SubmitTool,
+};
+
+// Re-export opencode tools
+#[cfg(feature = "opencode")]
+pub use tools::opencode::{
+    BashTool, EditTool, GlobTool, GrepTool, ListTool, ReadTool, WriteTool,
 };
 
 // Re-export LLM integration
@@ -88,13 +82,13 @@ pub use llm::{
 };
 
 // Re-export create_tool_registry functions from the active tool set
-#[cfg(feature = "old")]
+#[cfg(all(feature = "old", not(feature = "opencode")))]
 pub use tools::old::{create_tool_registry, create_tool_registry_with_open_window_size};
 
 #[cfg(feature = "opencode")]
 pub use tools::opencode::{create_tool_registry, create_tool_registry_with_open_window_size};
 
-#[cfg(test)]
+#[cfg(all(test, feature = "old", not(feature = "opencode")))]
 mod tests {
     use super::*;
 
@@ -140,5 +134,27 @@ mod tests {
         assert!(tool_names.contains(&"filemap".to_string()));
         assert!(tool_names.contains(&"submit".to_string()));
         assert!(tool_names.contains(&"classify_task".to_string()));
+    }
+}
+
+#[cfg(all(test, feature = "opencode"))]
+mod opencode_tests {
+    use super::*;
+
+    #[test]
+    fn test_opencode_registry_creation() {
+        let registry = create_tool_registry();
+
+        // Test that all expected opencode tools are registered
+        let tool_names = registry.list_tools();
+
+        // Core tools
+        assert!(tool_names.contains(&"bash".to_string()));
+        assert!(tool_names.contains(&"read".to_string()));
+        assert!(tool_names.contains(&"write".to_string()));
+        assert!(tool_names.contains(&"edit".to_string()));
+        assert!(tool_names.contains(&"glob".to_string()));
+        assert!(tool_names.contains(&"grep".to_string()));
+        assert!(tool_names.contains(&"list".to_string()));
     }
 }

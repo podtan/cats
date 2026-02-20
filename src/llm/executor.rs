@@ -128,7 +128,8 @@ pub fn execute_tool_calls(
                 callback.on_tool_complete(tool_name, tool_args_str, &result.message, true);
 
                 // Apply large result handling
-                let processed_result = handle_large_result(tool_name, &result.message, result_config);
+                let processed_result =
+                    handle_large_result(tool_name, &result.message, result_config);
                 results.push(format!("Tool: {}\nResult: {}", tool_name, processed_result));
             }
             Err(e) => {
@@ -215,7 +216,8 @@ pub fn execute_tool_calls_structured(
                 callback.on_tool_complete(tool_name, tool_args_str, &result.message, true);
 
                 // Apply large result handling
-                let processed_result = handle_large_result(tool_name, &result.message, result_config);
+                let processed_result =
+                    handle_large_result(tool_name, &result.message, result_config);
                 results.push(ToolExecutionResult {
                     tool_call_id,
                     tool_name: tool_name.clone(),
@@ -270,16 +272,13 @@ mod tests {
     }
 
     #[test]
+    #[cfg(all(feature = "old", not(feature = "opencode")))]
     fn test_execute_tool_calls_success() {
         let mut registry = create_tool_registry();
         let config = ResultHandlerConfig::default();
         let mut callback = TestCallback::new();
 
-        let tool_calls = vec![ToolCallRequest::new(
-            "call_1",
-            "_state",
-            "{}",
-        )];
+        let tool_calls = vec![ToolCallRequest::new("call_1", "_state", "{}")];
 
         let result = execute_tool_calls(&mut registry, tool_calls, &config, &mut callback);
         assert!(result.is_ok());
@@ -290,16 +289,13 @@ mod tests {
     }
 
     #[test]
+    #[cfg(all(feature = "old", not(feature = "opencode")))]
     fn test_execute_tool_calls_structured() {
         let mut registry = create_tool_registry();
         let config = ResultHandlerConfig::default();
         let mut callback = NoOpCallback;
 
-        let tool_calls = vec![ToolCallRequest::new(
-            "call_1",
-            "_state",
-            "{}",
-        )];
+        let tool_calls = vec![ToolCallRequest::new("call_1", "_state", "{}")];
 
         let results =
             execute_tool_calls_structured(&mut registry, tool_calls, &config, &mut callback);
@@ -313,16 +309,13 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "old")]
     fn test_execute_tool_calls_invalid_json() {
         let mut registry = create_tool_registry();
         let config = ResultHandlerConfig::default();
         let mut callback = NoOpCallback;
 
-        let tool_calls = vec![ToolCallRequest::new(
-            "call_1",
-            "_state",
-            "invalid json",
-        )];
+        let tool_calls = vec![ToolCallRequest::new("call_1", "_state", "invalid json")];
 
         let results =
             execute_tool_calls_structured(&mut registry, tool_calls, &config, &mut callback);

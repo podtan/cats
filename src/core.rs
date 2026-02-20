@@ -151,7 +151,7 @@ pub trait Tool: Send + Sync {
     fn execute(
         &mut self,
         args: &ToolArgs,
-        state: &Arc<Mutex<crate::tools::old::state::ToolState>>,
+        state: &Arc<Mutex<crate::state::ToolState>>,
     ) -> Result<ToolResult>;
 
     /// Get OpenAI function schema for this tool
