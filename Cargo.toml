@@ -36,7 +36,7 @@ syn = { version = "2.0", features = ["full"] }
 
 # Additional dependencies for opencode tools
 schemars = "0.8"
-reqwest = { version = "0.12", features = ["json", "stream"], optional = true }
+reqwest = { version = "0.12", features = ["json", "stream", "blocking"], optional = true }
 base64 = { version = "0.22", optional = true }
 sha2 = { version = "0.10", optional = true }
 

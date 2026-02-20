@@ -67,7 +67,8 @@ pub use tools::old::{
 // Re-export opencode tools
 #[cfg(feature = "opencode")]
 pub use tools::opencode::{
-    BashTool, EditTool, GlobTool, GrepTool, ListTool, ReadTool, WriteTool,
+    BashTool, EditTool, GlobTool, GrepTool, ListTool, MultiEditTool, ReadTool, TodoReadTool,
+    TodoWriteTool, WebFetchTool, WebSearchTool, WriteTool,
 };
 
 // Re-export LLM integration
@@ -156,5 +157,12 @@ mod opencode_tests {
         assert!(tool_names.contains(&"glob".to_string()));
         assert!(tool_names.contains(&"grep".to_string()));
         assert!(tool_names.contains(&"list".to_string()));
+        
+        // Extended tools
+        assert!(tool_names.contains(&"multiedit".to_string()));
+        assert!(tool_names.contains(&"webfetch".to_string()));
+        assert!(tool_names.contains(&"websearch".to_string()));
+        assert!(tool_names.contains(&"todowrite".to_string()));
+        assert!(tool_names.contains(&"todoread".to_string()));
     }
 }

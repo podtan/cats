@@ -8,7 +8,11 @@ mod edit;
 mod glob;
 mod grep;
 mod list;
+mod multiedit;
 mod read;
+mod todo;
+mod webfetch;
+mod websearch;
 mod write;
 
 pub use bash::BashTool;
@@ -16,7 +20,11 @@ pub use edit::EditTool;
 pub use glob::GlobTool;
 pub use grep::GrepTool;
 pub use list::ListTool;
+pub use multiedit::MultiEditTool;
 pub use read::ReadTool;
+pub use todo::{TodoReadTool, TodoWriteTool};
+pub use webfetch::WebFetchTool;
+pub use websearch::WebSearchTool;
 pub use write::WriteTool;
 
 use crate::core::ToolRegistry;
@@ -25,6 +33,7 @@ use crate::core::ToolRegistry;
 pub fn create_tool_registry() -> ToolRegistry {
     let mut registry = ToolRegistry::new();
 
+    // Core tools
     registry.register(Box::new(BashTool::new()));
     registry.register(Box::new(ReadTool::new()));
     registry.register(Box::new(WriteTool::new()));
@@ -32,6 +41,13 @@ pub fn create_tool_registry() -> ToolRegistry {
     registry.register(Box::new(GlobTool::new()));
     registry.register(Box::new(GrepTool::new()));
     registry.register(Box::new(ListTool::new()));
+
+    // Extended tools
+    registry.register(Box::new(MultiEditTool::new()));
+    registry.register(Box::new(WebFetchTool::new()));
+    registry.register(Box::new(WebSearchTool::new()));
+    registry.register(Box::new(TodoWriteTool::new()));
+    registry.register(Box::new(TodoReadTool::new()));
 
     registry
 }

@@ -190,7 +190,7 @@ fn parse_edit_args(args: &ToolArgs) -> Result<EditParams> {
 }
 
 /// Replace string in content with multiple fallback strategies
-fn replace_in_content(
+pub fn replace_in_content(
     content: &str,
     old_string: &str,
     new_string: &str,
