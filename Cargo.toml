@@ -3,7 +3,7 @@
 
 [package]
 name = "cats"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 description = "Coding Agent ToolS - A comprehensive toolkit for building AI-powered coding agents"
 license = "MIT OR Apache-2.0"
@@ -51,7 +51,7 @@ name = "cats"
 path = "src/lib.rs"
 
 [features]
-default = ["old"]
+default = ["opencode"]
 
 # Tool set feature flags
 old = []                    # Original CATS tools (deprecated, for migration)

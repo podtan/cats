@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-02-21
+
+### Changed
+- **BREAKING**: Default feature changed from `old` to `opencode`
+- `create_tool_registry_with_open_window_size()` now takes `Option<usize>` instead of `usize`
+
+### Added
+- OpenCode-compatible tool set is now the default:
+  - `bash` - Execute shell commands
+  - `read` - Read file contents with windowing
+  - `write` - Write content to files
+  - `edit` - Edit files with str_replace
+  - `glob` - Find files by pattern
+  - `grep` - Search file contents
+  - `ls` - List directory contents
+  - `webfetch` - Fetch web content (optional, requires `reqwest`)
+  - `question` - Ask user questions
+  - `task` - Launch sub-agents (placeholder)
+  - `todo` - Todo list management
+  - `patch` - Patch files (placeholder)
+  - `lsp` - LSP integration (placeholder)
+  - `skill` - Skill execution (placeholder)
+
+### Removed
+- `old` toolset is no longer the default (still available via `default = ["old"]` feature)
+
 ## [0.1.1] - 2025-10-29
 
 ### Fixed
