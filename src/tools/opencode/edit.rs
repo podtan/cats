@@ -77,7 +77,7 @@ impl Tool for EditTool {
     fn execute(
         &mut self,
         args: &ToolArgs,
-        _state: &Arc<Mutex<crate::state::ToolState>>,
+        state: &Arc<Mutex<crate::state::ToolState>>,
     ) -> Result<ToolResult> {
         let params = parse_edit_args(args)?;
 
@@ -85,12 +85,16 @@ impl Tool for EditTool {
             return Err(anyhow::anyhow!("oldString and newString must be different").into());
         }
 
+        // Get working directory from ToolState at execution time
+        let working_dir = state
+            .lock()
+            .map(|s| s.working_directory.clone())
+            .unwrap_or_else(|_| std::env::current_dir().unwrap_or_default());
+
         let filepath = if Path::new(&params.file_path).is_absolute() {
             PathBuf::from(&params.file_path)
         } else {
-            std::env::current_dir()
-                .unwrap_or_default()
-                .join(&params.file_path)
+            working_dir.join(&params.file_path)
         };
 
         if !filepath.exists() {

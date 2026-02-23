@@ -31,25 +31,13 @@ pub struct BashParams {
 /// Bash tool for executing shell commands
 pub struct BashTool {
     name: String,
-    working_directory: PathBuf,
 }
 
 impl BashTool {
     pub fn new() -> Self {
         Self {
             name: "bash".to_string(),
-            working_directory: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
         }
-    }
-
-    fn get_description() -> String {
-        include_str!("bash.txt").replace(
-            "${directory}",
-            &std::env::current_dir()
-                .unwrap_or_default()
-                .display()
-                .to_string(),
-        )
     }
 }
 
@@ -84,14 +72,17 @@ impl Tool for BashTool {
     fn execute(
         &mut self,
         args: &ToolArgs,
-        _state: &Arc<Mutex<crate::state::ToolState>>,
+        state: &Arc<Mutex<crate::state::ToolState>>,
     ) -> Result<ToolResult> {
         let params = parse_bash_args(args)?;
 
-        let workdir = params
-            .workdir
-            .map(PathBuf::from)
-            .unwrap_or_else(|| self.working_directory.clone());
+        // Read working directory from ToolState at execution time (like OpenCode)
+        let workdir = params.workdir.map(PathBuf::from).unwrap_or_else(|| {
+            state
+                .lock()
+                .map(|s| s.working_directory.clone())
+                .unwrap_or_else(|_| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
+        });
 
         let timeout = params.timeout.unwrap_or(DEFAULT_TIMEOUT_MS);
 

@@ -88,21 +88,25 @@ impl Tool for ListTool {
     fn execute(
         &mut self,
         args: &ToolArgs,
-        _state: &Arc<Mutex<crate::state::ToolState>>,
+        state: &Arc<Mutex<crate::state::ToolState>>,
     ) -> Result<ToolResult> {
         let params = parse_list_args(args)?;
+
+        // Get working directory from ToolState at execution time
+        let working_dir = state
+            .lock()
+            .map(|s| s.working_directory.clone())
+            .unwrap_or_else(|_| std::env::current_dir().unwrap_or_default());
 
         let search_path = params
             .path
             .map(PathBuf::from)
-            .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+            .unwrap_or_else(|| working_dir.clone());
 
         let search_path = if search_path.is_absolute() {
             search_path
         } else {
-            std::env::current_dir()
-                .unwrap_or_default()
-                .join(&search_path)
+            working_dir.join(&search_path)
         };
 
         if !search_path.exists() {

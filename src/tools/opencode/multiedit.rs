@@ -80,7 +80,7 @@ impl Tool for MultiEditTool {
     fn execute(
         &mut self,
         args: &ToolArgs,
-        _state: &Arc<Mutex<crate::state::ToolState>>,
+        state: &Arc<Mutex<crate::state::ToolState>>,
     ) -> Result<ToolResult> {
         let params = parse_multiedit_args(args)?;
 
@@ -88,12 +88,16 @@ impl Tool for MultiEditTool {
             return Err(anyhow::anyhow!("edits array cannot be empty").into());
         }
 
+        // Get working directory from ToolState at execution time
+        let working_dir = state
+            .lock()
+            .map(|s| s.working_directory.clone())
+            .unwrap_or_else(|_| std::env::current_dir().unwrap_or_default());
+
         let filepath = if Path::new(&params.file_path).is_absolute() {
             PathBuf::from(&params.file_path)
         } else {
-            std::env::current_dir()
-                .unwrap_or_default()
-                .join(&params.file_path)
+            working_dir.join(&params.file_path)
         };
 
         let is_new_file = !filepath.exists();

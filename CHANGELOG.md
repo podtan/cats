@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-02-23
+
+### Fixed
+- **Working Directory Resolution**: Tools now read working directory from `ToolState` at execution time instead of capturing it at instantiation
+  - This fixes the issue where tools would use the wrong directory when invoked from a different context
+  - Mirrors OpenCode's approach using async context
+  - Affected tools: `bash`, `read`, `write`, `edit`, `multiedit`, `glob`, `grep`, `list`
+
+### Added
+- `ToolRegistry::set_working_directory()` - Set the working directory for all tools
+- `ToolRegistry::get_working_directory()` - Get the current working directory from tool state
+
 ## [0.1.4] - 2026-02-21
 
 ### Changed

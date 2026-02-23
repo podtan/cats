@@ -238,6 +238,25 @@ impl ToolRegistry {
     pub fn get_state(&self) -> Arc<Mutex<crate::state::ToolState>> {
         Arc::clone(&self.state)
     }
+
+    /// Set the working directory for all tools.
+    ///
+    /// This should be called after determining the project directory,
+    /// before any tool execution. Tools will read from ToolState at
+    /// execution time rather than capturing the directory at instantiation.
+    pub fn set_working_directory(&mut self, path: std::path::PathBuf) {
+        if let Ok(mut state) = self.state.lock() {
+            state.working_directory = path;
+        }
+    }
+
+    /// Get the current working directory from tool state.
+    pub fn get_working_directory(&self) -> std::path::PathBuf {
+        self.state
+            .lock()
+            .map(|s| s.working_directory.clone())
+            .unwrap_or_else(|_| std::path::PathBuf::from("."))
+    }
 }
 
 impl Default for ToolRegistry {
