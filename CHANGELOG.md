@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-02-27
+
+### Changed
+- **TLS Backend**: Switched from native-tls to rustls for cross-compilation support
+  - `reqwest` now uses `rustls-tls-webpki-roots` instead of default native-tls
+  - Enables static linking with musl for portable binaries
+  - No OpenSSL dependency required
+
 ## [0.1.5] - 2026-02-23
 
 ### Fixed

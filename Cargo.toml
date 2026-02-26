@@ -3,7 +3,7 @@
 
 [package]
 name = "cats"
-version = "0.1.5"
+version = "0.1.6"
 edition = "2021"
 description = "Coding Agent ToolS - A comprehensive toolkit for building AI-powered coding agents"
 license = "MIT OR Apache-2.0"
@@ -36,7 +36,7 @@ syn = { version = "2.0", features = ["full"] }
 
 # Additional dependencies for opencode tools
 schemars = "0.8"
-reqwest = { version = "0.12", features = ["json", "stream", "blocking"], optional = true }
+reqwest = { version = "0.12", features = ["json", "stream", "blocking", "rustls-tls-webpki-roots"], default-features = false, optional = true }
 base64 = { version = "0.22", optional = true }
 sha2 = { version = "0.10", optional = true }
 
