@@ -201,7 +201,10 @@ fn parse_bash_args(args: &ToolArgs) -> Result<BashParams> {
         .get_named_arg("timeout")
         .and_then(|s| s.parse::<u64>().ok());
 
-    let workdir = args.get_named_arg("workdir").cloned();
+    let workdir = args
+        .get_named_arg("workdir")
+        .cloned()
+        .filter(|s| !s.is_empty()); // Treat empty strings as None
 
     let description = args.get_named_arg("description").cloned();
 

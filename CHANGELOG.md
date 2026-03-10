@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.10] - 2026-03-10
+
+### Fixed
+- **Bash Tool Empty Workdir Parameter Bug**: Empty string workdir parameters are now treated as `None` instead of being processed as valid paths
+  - Previously, when LLM provided `{"workdir": ""}`, the tool would fail with "No such file or directory" error
+  - Added `.filter(|s| !s.is_empty())` in `parse_bash_args()` to convert empty strings to `None`
+  - This prevents command execution failures and agent confusion when empty workdir is provided
+  - Related to fix in 0.1.7 for list tool - same pattern applied to bash tool
+
 ## [0.1.9] - 2026-03-10
 
 ### Fixed
