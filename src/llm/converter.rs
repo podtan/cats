@@ -282,6 +282,17 @@ pub fn json_to_tool_args(tool_name: &str, args: Value) -> Result<ToolArgs> {
                     debug!("   Available keys: {:?}", obj.keys().collect::<Vec<_>>());
                 }
             }
+            "list" => {
+                // Explicit handler for list tool - filters empty path strings
+                if let Some(path) = obj.get("path").and_then(|v| v.as_str()) {
+                    if !path.is_empty() {
+                        named_args.insert("path".to_string(), path.to_string());
+                    }
+                }
+                if let Some(ignore) = obj.get("ignore") {
+                    named_args.insert("ignore".to_string(), ignore.to_string());
+                }
+            }
             _ => {
                 // For unknown tools, try to convert everything as named arguments
                 for (key, value) in obj {

@@ -55,7 +55,38 @@ async fn main() -> anyhow::Result<()> {
                 .cloned()
                 .collect();
 
-            let tool_args = ToolArgs::with_named_args(args, HashMap::new());
+            // Try to parse args as JSON if they look like JSON
+            let tool_args = if args.len() == 1 && args[0].trim_start().starts_with('{') {
+                // Try to parse as JSON and convert to named args
+                match serde_json::from_str::<serde_json::Value>(&args[0]) {
+                    Ok(json_value) => {
+                        if let Some(obj) = json_value.as_object() {
+                            let mut named_args = HashMap::new();
+                            for (key, value) in obj {
+                                if let Some(str_val) = value.as_str() {
+                                    named_args.insert(key.clone(), str_val.to_string());
+                                } else if let Some(bool_val) = value.as_bool() {
+                                    named_args.insert(key.clone(), bool_val.to_string());
+                                } else if let Some(num_val) = value.as_u64() {
+                                    named_args.insert(key.clone(), num_val.to_string());
+                                } else if let Some(num_val) = value.as_i64() {
+                                    named_args.insert(key.clone(), num_val.to_string());
+                                } else if let Some(num_val) = value.as_f64() {
+                                    named_args.insert(key.clone(), num_val.to_string());
+                                } else {
+                                    named_args.insert(key.clone(), value.to_string());
+                                }
+                            }
+                            ToolArgs::with_named_args(Vec::new(), named_args)
+                        } else {
+                            ToolArgs::with_named_args(args, HashMap::new())
+                        }
+                    }
+                    Err(_) => ToolArgs::with_named_args(args, HashMap::new())
+                }
+            } else {
+                ToolArgs::with_named_args(args, HashMap::new())
+            };
 
             match registry.execute_tool(tool_name, &tool_args) {
                 Ok(result) => {

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-03-10
+
+### Fixed
+- **CLI Tool Argument Parsing**: Fixed command-line interface to properly parse JSON arguments
+  - CLI now parses JSON arguments from strings like `{"path":"/home/leo"}` and converts them to named args
+  - Previously, JSON strings were treated as positional args, causing tools to ignore them
+  - This fix enables proper CLI usage: `cats list '{"path":"/home/leo"}'`
+- **JSON Converter for List Tool**: Added explicit handler for `list` tool in JSON-to-ToolArgs conversion
+  - Previously, the `list` tool fell into the default case which could cause parameter conversion issues
+  - Now properly handles empty path strings by filtering them out (treating empty as None)
+  - Ensures robust parameter handling when LLM calls the list tool via function calling APIs
+  - Related to fix in 0.1.7 - provides defense-in-depth for empty path parameter handling
+
 ## [0.1.7] - 2026-03-10
 
 ### Fixed
@@ -100,7 +113,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - API surface is stable and production-ready
 - No backward compatibility with `simpaticoder-tools` crate name
 
-[Unreleased]: https://github.com/podtan/cats/compare/v0.1.7...HEAD
+[Unreleased]: https://github.com/podtan/cats/compare/v0.1.8...HEAD
+[0.1.8]: https://github.com/podtan/cats/compare/v0.1.7...v0.1.8
 [0.1.7]: https://github.com/podtan/cats/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/podtan/cats/releases/tag/v0.1.6
 [0.1.5]: https://github.com/podtan/cats/releases/tag/v0.1.5
