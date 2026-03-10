@@ -218,7 +218,10 @@ impl Tool for ListTool {
 }
 
 fn parse_list_args(args: &ToolArgs) -> Result<ListParams> {
-    let path = args.get_named_arg("path").cloned();
+    let path = args
+        .get_named_arg("path")
+        .cloned()
+        .filter(|s| !s.is_empty()); // Treat empty strings as None
 
     let ignore = args
         .get_named_arg("ignore")

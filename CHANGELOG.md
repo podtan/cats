@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-03-10
+
+### Fixed
+- **List Tool Empty Path Parameter Bug**: Empty string path parameters are now treated as `None` instead of being processed as valid paths
+  - Previously, when LLM provided `{"path": ""}`, the tool would list the current working directory instead of the intended directory
+  - Added `.filter(|s| !s.is_empty())` in `parse_list_args()` to convert empty strings to `None`
+  - This prevents agent confusion and repeated tool calls when empty paths are provided
+  - Fixes issue where agent would appear "stuck" repeatedly listing the wrong directory
+
 ## [0.1.6] - 2026-02-27
 
 ### Changed
@@ -91,5 +100,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - API surface is stable and production-ready
 - No backward compatibility with `simpaticoder-tools` crate name
 
-[Unreleased]: https://github.com/podtan/cats/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/podtan/cats/compare/v0.1.7...HEAD
+[0.1.7]: https://github.com/podtan/cats/compare/v0.1.6...v0.1.7
+[0.1.6]: https://github.com/podtan/cats/releases/tag/v0.1.6
+[0.1.5]: https://github.com/podtan/cats/releases/tag/v0.1.5
+[0.1.4]: https://github.com/podtan/cats/releases/tag/v0.1.4
+[0.1.1]: https://github.com/podtan/cats/releases/tag/v0.1.1
 [0.1.0]: https://github.com/podtan/cats/releases/tag/v0.1.0
