@@ -3,6 +3,14 @@
 //! Lists directory contents with tree-like output.
 
 use crate::core::{Tool, ToolArgs, ToolError, ToolResult};
+
+macro_rules! debug {
+    ($($arg:tt)*) => {
+        if std::env::var("RUST_LOG").map(|v| v.to_lowercase().contains("debug")).unwrap_or(false) {
+            eprintln!("[DEBUG LIST] {}", format!($($arg)*));
+        }
+    };
+}
 use anyhow::Result;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -90,26 +98,32 @@ impl Tool for ListTool {
         args: &ToolArgs,
         state: &Arc<Mutex<crate::state::ToolState>>,
     ) -> Result<ToolResult> {
+        debug!("execute called with args: {:?}", args);
         let params = parse_list_args(args)?;
+        debug!("parsed params: path={:?}, ignore={:?}", params.path, params.ignore);
 
         // Get working directory from ToolState at execution time
         let working_dir = state
             .lock()
             .map(|s| s.working_directory.clone())
             .unwrap_or_else(|_| std::env::current_dir().unwrap_or_default());
+        debug!("working_dir: {:?}", working_dir);
 
         let search_path = params
             .path
             .map(PathBuf::from)
             .unwrap_or_else(|| working_dir.clone());
+        debug!("initial search_path: {:?}", search_path);
 
         let search_path = if search_path.is_absolute() {
             search_path
         } else {
             working_dir.join(&search_path)
         };
+        debug!("resolved search_path: {:?}", search_path);
 
         if !search_path.exists() {
+            debug!("path does not exist: {:?}", search_path);
             return Err(ToolError::FileNotFound {
                 path: search_path.display().to_string(),
             }
@@ -117,6 +131,7 @@ impl Tool for ListTool {
         }
 
         if !search_path.is_dir() {
+            debug!("path is not a directory: {:?}", search_path);
             return Err(anyhow::anyhow!(
                 "Path is not a directory: {}",
                 search_path.display()
@@ -131,6 +146,7 @@ impl Tool for ListTool {
                 ignore_set.insert(pattern.clone());
             }
         }
+        debug!("ignore_set has {} patterns", ignore_set.len());
 
         // Collect files
         let mut files: Vec<String> = Vec::new();
@@ -200,6 +216,7 @@ impl Tool for ListTool {
             search_path.display(),
             render_dir(".", &dirs, &files_by_dir, 0)
         );
+        debug!("found {} files, truncated: {}", files.len(), files.len() >= LIMIT);
 
         Ok(ToolResult::success_with_data(
             output,
