@@ -51,8 +51,8 @@ const IGNORE_PATTERNS: &[&str] = &[
 /// List tool parameters
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ListParams {
-    /// The absolute path to the directory to list (must be absolute, not relative)
-    pub path: Option<String>,
+    /// The directory path to list. For current directory send ".". If starts with "/" it is absolute, if not it is relative.
+    pub path: String,
     /// List of glob patterns to ignore
     pub ignore: Option<Vec<String>>,
 }
@@ -82,7 +82,7 @@ impl Tool for ListTool {
     }
 
     fn description(&self) -> &str {
-        "Reads a directory from the local filesystem"
+        "Lists directory contents with tree-like output. The 'path' parameter is required. For current directory send '.'. If starts with '/' it is absolute, if not it is relative."
     }
 
     fn signature(&self) -> &str {
@@ -109,10 +109,7 @@ impl Tool for ListTool {
             .unwrap_or_else(|_| std::env::current_dir().unwrap_or_default());
         debug!("working_dir: {:?}", working_dir);
 
-        let search_path = params
-            .path
-            .map(PathBuf::from)
-            .unwrap_or_else(|| working_dir.clone());
+        let search_path = PathBuf::from(&params.path);
         debug!("initial search_path: {:?}", search_path);
 
         let search_path = if search_path.is_absolute() {
@@ -238,7 +235,8 @@ fn parse_list_args(args: &ToolArgs) -> Result<ListParams> {
     let path = args
         .get_named_arg("path")
         .cloned()
-        .filter(|s| !s.is_empty()); // Treat empty strings as None
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| anyhow::anyhow!("path parameter is required. Send '.' for current directory"))?;
 
     let ignore = args
         .get_named_arg("ignore")
