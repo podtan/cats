@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.11] - 2026-03-10
+
+### Fixed
+- **List Tool Path Parameter**: Made `path` parameter required to prevent GLM-5 from sending null/empty values
+  - Previously, optional path parameter caused issues with certain LLMs (GLM-5) that would send null or empty strings
+  - Path is now a required parameter, ensuring explicit directory specification
+  - Improves reliability when used with various LLM providers
+
+### Changed
+- **List Tool Debug Logging**: Replaced `tracing` crate with simple `debug!` macro for debug logging
+  - Reduces dependency overhead for basic debug output
+  - Simplifies the codebase by removing unnecessary tracing infrastructure
+
 ## [0.1.10] - 2026-03-10
 
 ### Fixed
@@ -127,7 +140,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - API surface is stable and production-ready
 - No backward compatibility with `simpaticoder-tools` crate name
 
-[Unreleased]: https://github.com/podtan/cats/compare/v0.1.9...HEAD
+[Unreleased]: https://github.com/podtan/cats/compare/v0.1.11...HEAD
+[0.1.11]: https://github.com/podtan/cats/compare/v0.1.10...v0.1.11
+[0.1.10]: https://github.com/podtan/cats/compare/v0.1.9...v0.1.10
 [0.1.9]: https://github.com/podtan/cats/compare/v0.1.8...v0.1.9
 [0.1.8]: https://github.com/podtan/cats/compare/v0.1.7...v0.1.8
 [0.1.7]: https://github.com/podtan/cats/compare/v0.1.6...v0.1.7
