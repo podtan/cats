@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.12] - 2026-06-01
+
+### Fixed
+- **Grep/Glob Tool Silent Failures**: Fixed silent failures when LLM sends empty string values for `path` and `pattern` parameters
+  - Made `path` parameter required (non-optional) in both `grep` and `glob` tools, matching the `list` tool pattern
+  - Added explicit `grep` and `glob` handlers in `converter.rs` that filter out empty string values
+  - Updated `validate_args` to check for non-empty pattern values (not just presence)
+  - Updated `parse_grep_args` and `parse_glob_args` to filter empty patterns and paths with `.filter(|s| !s.is_empty())`
+  - Error messages now clearly state "path parameter is required. Send '.' for current directory" instead of confusing "pattern argument" errors
+  - Affects GLM-5 and GLM-5-Turbo models which were sending `{"path":"","pattern":"..."}` causing the pattern to be lost during JSON deserialization
+
 ## [0.1.11] - 2026-03-10
 
 ### Fixed
@@ -140,7 +151,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - API surface is stable and production-ready
 - No backward compatibility with `simpaticoder-tools` crate name
 
-[Unreleased]: https://github.com/podtan/cats/compare/v0.1.11...HEAD
+[Unreleased]: https://github.com/podtan/cats/compare/v0.1.12...HEAD
+[0.1.12]: https://github.com/podtan/cats/compare/v0.1.11...v0.1.12
 [0.1.11]: https://github.com/podtan/cats/compare/v0.1.10...v0.1.11
 [0.1.10]: https://github.com/podtan/cats/compare/v0.1.9...v0.1.10
 [0.1.9]: https://github.com/podtan/cats/compare/v0.1.8...v0.1.9
