@@ -18,8 +18,8 @@ const LIMIT: usize = 100;
 pub struct GlobParams {
     /// The glob pattern to match files against
     pub pattern: String,
-    /// The directory to search in. If not specified, the current working directory will be used.
-    pub path: Option<String>,
+    /// The directory to search in. For current directory send ".". If starts with "/" it is absolute, if not it is relative.
+    pub path: String,
 }
 
 /// Glob tool for finding files by pattern
@@ -47,23 +47,14 @@ impl Tool for GlobTool {
     }
 
     fn description(&self) -> &str {
-        "Fast file pattern matching tool that works with any codebase size"
+        "Fast file pattern matching tool that works with any codebase size. The 'path' parameter is required. For current directory send '.'. If starts with '/' it is absolute, if not it is relative."
     }
 
     fn signature(&self) -> &str {
-        "glob --pattern <pattern> [--path <directory>]"
+        "glob --path <directory> --pattern <pattern>"
     }
 
-    fn validate_args(&self, args: &ToolArgs) -> Result<(), ToolError> {
-        let has_pattern = args
-            .get_named_arg("pattern")
-            .map(|s| !s.is_empty())
-            .unwrap_or(false);
-        if !has_pattern && args.args.iter().all(|s| s.is_empty()) {
-            return Err(ToolError::InvalidArgs {
-                message: "glob tool requires a non-empty 'pattern' argument".to_string(),
-            });
-        }
+    fn validate_args(&self, _args: &ToolArgs) -> Result<(), ToolError> {
         Ok(())
     }
 
@@ -80,10 +71,7 @@ impl Tool for GlobTool {
             .map(|s| s.working_directory.clone())
             .unwrap_or_else(|_| std::env::current_dir().unwrap_or_default());
 
-        let search_path = params
-            .path
-            .map(PathBuf::from)
-            .unwrap_or_else(|| working_dir.clone());
+        let search_path = PathBuf::from(&params.path);
 
         let search_path = if search_path.is_absolute() {
             search_path
@@ -174,7 +162,11 @@ fn parse_glob_args(args: &ToolArgs) -> Result<GlobParams> {
         return Err(anyhow::anyhow!("pattern must not be empty or whitespace-only"));
     }
 
-    let path = args.get_named_arg("path").cloned().filter(|s| !s.is_empty());
+    let path = args
+        .get_named_arg("path")
+        .cloned()
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| anyhow::anyhow!("path parameter is required. Send '.' for current directory"))?;
 
     Ok(GlobParams { pattern, path })
 }

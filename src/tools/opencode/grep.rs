@@ -20,8 +20,8 @@ const LIMIT: usize = 100;
 pub struct GrepParams {
     /// The regex pattern to search for in file contents
     pub pattern: String,
-    /// The directory to search in. Defaults to the current working directory.
-    pub path: Option<String>,
+    /// The directory to search in. For current directory send ".". If starts with "/" it is absolute, if not it is relative.
+    pub path: String,
     /// File pattern to include in the search (e.g. "*.js", "*.{ts,tsx}")
     pub include: Option<String>,
 }
@@ -51,11 +51,11 @@ impl Tool for GrepTool {
     }
 
     fn description(&self) -> &str {
-        "Fast content search tool that searches file contents using regular expressions"
+        "Fast content search tool that searches file contents using regular expressions. The 'path' parameter is required. For current directory send '.'. If starts with '/' it is absolute, if not it is relative."
     }
 
     fn signature(&self) -> &str {
-        "grep --pattern <regex> [--path <directory>] [--include <glob>]"
+        "grep --pattern <regex> --path <directory> [--include <glob>]"
     }
 
     fn validate_args(&self, args: &ToolArgs) -> Result<(), ToolError> {
@@ -91,10 +91,7 @@ impl Tool for GrepTool {
             .map(|s| s.working_directory.clone())
             .unwrap_or_else(|_| std::env::current_dir().unwrap_or_default());
 
-        let search_path = params
-            .path
-            .map(PathBuf::from)
-            .unwrap_or_else(|| working_dir.clone());
+        let search_path = PathBuf::from(&params.path);
 
         let search_path = if search_path.is_absolute() {
             search_path
@@ -234,7 +231,11 @@ fn parse_grep_args(args: &ToolArgs) -> Result<GrepParams> {
         return Err(anyhow::anyhow!("pattern must not be empty or whitespace-only"));
     }
 
-    let path = args.get_named_arg("path").cloned().filter(|s| !s.is_empty());
+    let path = args
+        .get_named_arg("path")
+        .cloned()
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| anyhow::anyhow!("path parameter is required. Send '.' for current directory"))?;
 
     let include = args.get_named_arg("include").cloned();
 
