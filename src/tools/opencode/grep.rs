@@ -59,9 +59,13 @@ impl Tool for GrepTool {
     }
 
     fn validate_args(&self, args: &ToolArgs) -> Result<(), ToolError> {
-        if args.get_named_arg("pattern").is_none() && args.args.is_empty() {
+        let has_pattern = args
+            .get_named_arg("pattern")
+            .map(|s| !s.is_empty())
+            .unwrap_or(false);
+        if !has_pattern && args.args.iter().all(|s| s.is_empty()) {
             return Err(ToolError::InvalidArgs {
-                message: "grep tool requires a 'pattern' argument".to_string(),
+                message: "grep tool requires a non-empty 'pattern' argument".to_string(),
             });
         }
         Ok(())
@@ -219,10 +223,18 @@ fn parse_grep_args(args: &ToolArgs) -> Result<GrepParams> {
     let pattern = args
         .get_named_arg("pattern")
         .cloned()
+        .filter(|s| !s.is_empty())
         .or_else(|| args.args.first().cloned())
-        .ok_or_else(|| anyhow::anyhow!("pattern is required"))?;
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| anyhow::anyhow!("pattern is required and must be non-empty"))?
+        .trim()
+        .to_string();
 
-    let path = args.get_named_arg("path").cloned();
+    if pattern.is_empty() {
+        return Err(anyhow::anyhow!("pattern must not be empty or whitespace-only"));
+    }
+
+    let path = args.get_named_arg("path").cloned().filter(|s| !s.is_empty());
 
     let include = args.get_named_arg("include").cloned();
 

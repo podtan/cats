@@ -293,6 +293,40 @@ pub fn json_to_tool_args(tool_name: &str, args: Value) -> Result<ToolArgs> {
                     named_args.insert("ignore".to_string(), ignore.to_string());
                 }
             }
+            "grep" => {
+                // Explicit handler for grep tool - preserves all arguments as named args
+                // and filters empty values to prevent silent failures with pipe characters
+                for (key, value) in obj {
+                    if let Some(str_val) = value.as_str() {
+                        if !str_val.is_empty() {
+                            named_args.insert(key.clone(), str_val.to_string());
+                        }
+                    } else if let Some(bool_val) = value.as_bool() {
+                        named_args.insert(key.clone(), bool_val.to_string());
+                    } else if let Some(num_val) = value.as_u64() {
+                        named_args.insert(key.clone(), num_val.to_string());
+                    } else {
+                        named_args.insert(key.clone(), value.to_string());
+                    }
+                }
+            }
+            "glob" => {
+                // Explicit handler for glob tool - preserves all arguments as named args
+                // and filters empty values to prevent silent failures
+                for (key, value) in obj {
+                    if let Some(str_val) = value.as_str() {
+                        if !str_val.is_empty() {
+                            named_args.insert(key.clone(), str_val.to_string());
+                        }
+                    } else if let Some(bool_val) = value.as_bool() {
+                        named_args.insert(key.clone(), bool_val.to_string());
+                    } else if let Some(num_val) = value.as_u64() {
+                        named_args.insert(key.clone(), num_val.to_string());
+                    } else {
+                        named_args.insert(key.clone(), value.to_string());
+                    }
+                }
+            }
             _ => {
                 // For unknown tools, try to convert everything as named arguments
                 for (key, value) in obj {
