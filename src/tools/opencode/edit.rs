@@ -297,6 +297,10 @@ fn line_trimmed_replacer<'a>(content: &'a str, find: &'a str) -> Vec<String> {
         search_lines
     };
 
+    if search_lines.is_empty() {
+        return results;
+    }
+
     for i in 0..=original_lines.len().saturating_sub(search_lines.len()) {
         let mut matches = true;
 
