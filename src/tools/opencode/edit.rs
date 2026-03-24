@@ -340,10 +340,12 @@ fn whitespace_normalized_replacer<'a>(content: &'a str, find: &'a str) -> Vec<St
     if find_lines.len() > 1 {
         let content_lines: Vec<&str> = content.lines().collect();
 
-        for i in 0..=content_lines.len().saturating_sub(find_lines.len()) {
-            let block: String = content_lines[i..i + find_lines.len()].join("\n");
-            if normalize(&block) == normalized_find {
-                results.push(block);
+        if content_lines.len() >= find_lines.len() {
+            for i in 0..=content_lines.len() - find_lines.len() {
+                let block: String = content_lines[i..i + find_lines.len()].join("\n");
+                if normalize(&block) == normalized_find {
+                    results.push(block);
+                }
             }
         }
     }
@@ -363,12 +365,17 @@ fn trimmed_boundary_replacer<'a>(content: &'a str, find: &'a str) -> Vec<String>
 
     // Try block match where the block's trimmed content matches
     let find_lines: Vec<&str> = find.lines().collect();
+    if find_lines.is_empty() {
+        return results;
+    }
     let content_lines: Vec<&str> = content.lines().collect();
 
-    for i in 0..=content_lines.len().saturating_sub(find_lines.len()) {
-        let block: String = content_lines[i..i + find_lines.len()].join("\n");
-        if block.trim() == trimmed_find {
-            results.push(block);
+    if content_lines.len() >= find_lines.len() {
+        for i in 0..=content_lines.len() - find_lines.len() {
+            let block: String = content_lines[i..i + find_lines.len()].join("\n");
+            if block.trim() == trimmed_find {
+                results.push(block);
+            }
         }
     }
 
