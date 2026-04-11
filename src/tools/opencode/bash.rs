@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -76,6 +77,12 @@ impl Tool for BashTool {
     ) -> Result<ToolResult> {
         let params = parse_bash_args(args)?;
 
+        // Clone the cancel signal before spawning so we don't hold the lock.
+        let cancel_signal = {
+            let state_guard = state.lock().map_err(|e| anyhow::anyhow!("Failed to lock tool state: {}", e))?;
+            state_guard.cancel_signal()
+        };
+
         // Read working directory from ToolState at execution time (like OpenCode)
         let workdir = params.workdir.map(PathBuf::from).unwrap_or_else(|| {
             state
@@ -106,11 +113,17 @@ impl Tool for BashTool {
 
         let mut output = String::new();
         let mut truncated = false;
+        let mut cancelled = false;
 
         // Read stdout
         if let Some(stdout) = child.stdout.take() {
             let reader = BufReader::new(stdout);
             for line in reader.lines() {
+                if cancel_signal.load(Ordering::Relaxed) {
+                    cancelled = true;
+                    let _ = child.kill();
+                    break;
+                }
                 if start.elapsed() > Duration::from_millis(timeout) {
                     truncated = true;
                     let _ = child.kill();
@@ -127,11 +140,16 @@ impl Tool for BashTool {
             }
         }
 
-        // Read stderr
-        if !truncated {
+        // Read stderr (skip if already cancelled or truncated)
+        if !truncated && !cancelled {
             if let Some(stderr) = child.stderr.take() {
                 let reader = BufReader::new(stderr);
                 for line in reader.lines() {
+                    if cancel_signal.load(Ordering::Relaxed) {
+                        cancelled = true;
+                        let _ = child.kill();
+                        break;
+                    }
                     if start.elapsed() > Duration::from_millis(timeout) {
                         truncated = true;
                         let _ = child.kill();
@@ -147,6 +165,19 @@ impl Tool for BashTool {
                     }
                 }
             }
+        }
+
+        // If cancelled, return immediately with a user-friendly message
+        if cancelled {
+            // Drain remaining output (best-effort)
+            let _ = child.wait();
+            return Ok(ToolResult::success_with_data(
+                "Command cancelled by user (ESC)".to_string(),
+                serde_json::json!({
+                    "exit_code": -1,
+                    "description": params.description,
+                }),
+            ));
         }
 
         let exit_status = child

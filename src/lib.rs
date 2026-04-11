@@ -43,7 +43,7 @@ pub mod tools;
 pub use core::{Tool, ToolArgs, ToolRegistry, ToolResult};
 
 // Re-export state types
-pub use state::{FileState, StateSnapshot, ToolState};
+pub use state::{CancelSignal, FileState, StateSnapshot, ToolState};
 
 // Re-export tools from the active tool set
 #[cfg(feature = "old")]

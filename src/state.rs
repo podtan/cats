@@ -5,9 +5,47 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+
+/// Shared cancel signal that can be set from outside to request
+/// immediate termination of a running tool (e.g. bash command on ESC).
+#[derive(Debug, Clone)]
+pub struct CancelSignal {
+    inner: Arc<AtomicBool>,
+}
+
+impl CancelSignal {
+    /// Create a new (un-cancelled) signal.
+    pub fn new() -> Self {
+        Self {
+            inner: Arc::new(AtomicBool::new(false)),
+        }
+    }
+
+    /// Signal cancellation.
+    pub fn request_cancel(&self) {
+        self.inner.store(true, Ordering::Relaxed);
+    }
+
+    /// Reset the signal (e.g. before starting a new tool call).
+    pub fn reset(&self) {
+        self.inner.store(false, Ordering::Relaxed);
+    }
+
+    /// Check whether cancellation has been requested.
+    pub fn is_cancelled(&self) -> bool {
+        self.inner.load(Ordering::Relaxed)
+    }
+}
+
+impl Default for CancelSignal {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 /// Represents the state of the tool system
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolState {
     /// Currently open files with their windowed views
     pub open_files: HashMap<PathBuf, FileState>,
@@ -17,6 +55,9 @@ pub struct ToolState {
     pub history: Vec<StateSnapshot>,
     /// Current working directory
     pub working_directory: PathBuf,
+    /// Cancellation signal for cooperative tool cancellation (e.g., ESC during bash execution).
+    /// Shared via `Arc<AtomicBool>` so tools can clone it before spawning child processes.
+    cancel_signal: Arc<AtomicBool>,
 }
 
 /// State of an individual file
@@ -123,6 +164,7 @@ impl ToolState {
             current_file: None,
             history: Vec::new(),
             working_directory: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
+            cancel_signal: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -239,6 +281,29 @@ impl ToolState {
         }
 
         summary
+    }
+
+    // ---- Cancel signal helpers ----
+
+    /// Signal cancellation — sets the shared flag so running tools can check it.
+    pub fn request_cancel(&self) {
+        self.cancel_signal.store(true, Ordering::Relaxed);
+    }
+
+    /// Reset the cancel signal (e.g. before starting a new tool call).
+    pub fn reset_cancel(&self) {
+        self.cancel_signal.store(false, Ordering::Relaxed);
+    }
+
+    /// Check whether cancellation has been requested.
+    pub fn is_cancelled(&self) -> bool {
+        self.cancel_signal.load(Ordering::Relaxed)
+    }
+
+    /// Return a clone of the inner `Arc<AtomicBool>` so a tool can check
+    /// the signal without holding the `Mutex<ToolState>` lock.
+    pub fn cancel_signal(&self) -> Arc<AtomicBool> {
+        Arc::clone(&self.cancel_signal)
     }
 }
 
