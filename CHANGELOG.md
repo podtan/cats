@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.15] - 2026-04-15
+
+### Added
+- **Cooperative Cancellation for Tool Execution**: Added `CancelSignal` (Arc<AtomicBool>) infrastructure so running tools (especially bash) can be killed immediately when the user presses ESC
+  - New `CancelSignal` struct with `request_cancel()`, `reset()`, and `is_cancelled()` methods
+  - Added `cancel_signal` field to `ToolState` with accessor methods (`request_cancel()`, `reset_cancel()`, `is_cancelled()`, `cancel_signal()`)
+  - Re-exported `CancelSignal` from `lib.rs` for downstream consumers
+  - BashTool now clones the cancel signal before spawning child processes to avoid holding the Mutex lock
+  - Added cancel checks in BashTool stdout and stderr read loops — on cancel, kills child process and returns early
+  - Added cancel check before starting stderr read (skip if already cancelled)
+  - On cancel, returns a user-friendly result: "Command cancelled by user (ESC)" with exit_code -1
+
+## [0.1.14] - 2026-04-15
+
+### Fixed
+- **Edit Tool OOB Panics**: Prevented out-of-bounds panics in `whitespace_normalized_replacer` and `trimmed_boundary_replacer` when dealing with edge cases in text replacement
+- **Edit Tool Empty Lines Panic**: Prevented panic in `line_trimmed_replacer` when search_lines becomes empty after trailing newline trim
+
+## [0.1.13] - 2026-04-15
+
+### Fixed
+- **Grep/Glob Tool Silent Failures**: Fixed silent failures when LLM sends empty string values for `path` and `pattern` parameters
+  - Made `path` parameter required (non-optional) in both `grep` and `glob` tools, matching the `list` tool pattern
+  - Added explicit `grep` and `glob` handlers in `converter.rs` that filter out empty string values
+  - Updated `validate_args` to check for non-empty pattern values (not just presence)
+  - Updated `parse_grep_args` and `parse_glob_args` to filter empty patterns and paths with `.filter(|s| !s.is_empty())`
+  - Error messages now clearly state "path parameter is required. Send '.' for current directory" instead of confusing "pattern argument" errors
+  - Affects GLM-5 and GLM-5-Turbo models which were sending `{"path":"","pattern":"..."}` causing the pattern to be lost during JSON deserialization
+
 ## [0.1.12] - 2026-06-01
 
 ### Fixed
@@ -151,7 +180,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - API surface is stable and production-ready
 - No backward compatibility with `simpaticoder-tools` crate name
 
-[Unreleased]: https://github.com/podtan/cats/compare/v0.1.12...HEAD
+[Unreleased]: https://github.com/podtan/cats/compare/v0.1.15...HEAD
+[0.1.15]: https://github.com/podtan/cats/compare/v0.1.14...v0.1.15
+[0.1.14]: https://github.com/podtan/cats/compare/v0.1.13...v0.1.14
+[0.1.13]: https://github.com/podtan/cats/compare/v0.1.12...v0.1.13
 [0.1.12]: https://github.com/podtan/cats/compare/v0.1.11...v0.1.12
 [0.1.11]: https://github.com/podtan/cats/compare/v0.1.10...v0.1.11
 [0.1.10]: https://github.com/podtan/cats/compare/v0.1.9...v0.1.10
