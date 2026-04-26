@@ -213,25 +213,21 @@ pub fn replace_in_content(
     if content.contains(old_string) {
         let occurrences = content.matches(old_string).count();
 
-        if occurrences > 1 && !replace_all {
-            return Err(anyhow::anyhow!(
-                "Found multiple matches for oldString. Provide more surrounding lines in oldString to identify the correct match."
-            ));
+        if occurrences == 1 || replace_all {
+            if replace_all {
+                return Ok(content.replace(old_string, new_string));
+            }
+            // Replace first occurrence
+            if let Some(pos) = content.find(old_string) {
+                let mut result =
+                    String::with_capacity(content.len() - old_string.len() + new_string.len());
+                result.push_str(&content[..pos]);
+                result.push_str(new_string);
+                result.push_str(&content[pos + old_string.len()..]);
+                return Ok(result);
+            }
         }
-
-        if replace_all {
-            return Ok(content.replace(old_string, new_string));
-        }
-
-        // Replace first occurrence
-        if let Some(pos) = content.find(old_string) {
-            let mut result =
-                String::with_capacity(content.len() - old_string.len() + new_string.len());
-            result.push_str(&content[..pos]);
-            result.push_str(new_string);
-            result.push_str(&content[pos + old_string.len()..]);
-            return Ok(result);
-        }
+        // occurrences > 1 && !replace_all: fall through to find a unique fuzzy match
     }
 
     // Try line-trimmed matching
@@ -253,6 +249,14 @@ pub fn replace_in_content(
         if let Some(new_content) = try_replace(content, &replaced, new_string, replace_all)? {
             return Ok(new_content);
         }
+    }
+
+    // If the exact string was present more than once but no fuzzy strategy found a unique match,
+    // report the ambiguity (consistent with OpenCode's behaviour).
+    if !replace_all && content.matches(old_string).count() > 1 {
+        return Err(anyhow::anyhow!(
+            "Found multiple matches for oldString. Provide more surrounding lines in oldString to identify the correct match."
+        ));
     }
 
     Err(anyhow::anyhow!("oldString not found in content"))
