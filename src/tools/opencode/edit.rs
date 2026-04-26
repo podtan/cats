@@ -251,6 +251,15 @@ pub fn replace_in_content(
         }
     }
 
+    // Try escape-normalized matching: unescape literal \\n, \\t, \\r sequences
+    // that LLMs sometimes emit due to JSON double-escaping
+    let unescaped = unescape_string(old_string);
+    if unescaped != old_string {
+        if let Ok(new_content) = replace_in_content(content, &unescaped, new_string, replace_all) {
+            return Ok(new_content);
+        }
+    }
+
     // If the exact string was present more than once but no fuzzy strategy found a unique match,
     // report the ambiguity (consistent with OpenCode's behaviour).
     if !replace_all && content.matches(old_string).count() > 1 {
@@ -292,6 +301,28 @@ fn try_replace(
     }
 
     Ok(None)
+}
+
+/// Unescape literal escape sequences that LLMs may emit due to JSON double-escaping.
+/// Converts the 2-char sequences \\n, \\t, \\r, \\" into their actual control characters.
+fn unescape_string(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut chars = s.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\\' {
+            match chars.peek() {
+                Some('n') => { chars.next(); out.push('\n'); }
+                Some('t') => { chars.next(); out.push('\t'); }
+                Some('r') => { chars.next(); out.push('\r'); }
+                Some('"') => { chars.next(); out.push('"'); }
+                Some('\\') => { chars.next(); out.push('\\'); }
+                _ => out.push(c),
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    out
 }
 
 /// Line-trimmed replacer: matches ignoring leading/trailing whitespace on each line
