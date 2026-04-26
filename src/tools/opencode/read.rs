@@ -18,7 +18,7 @@ const MAX_LINE_LENGTH: usize = 2000;
 pub struct ReadParams {
     /// The path to the file to read
     pub file_path: String,
-    /// The line number to start reading from (0-based)
+    /// The line number to start reading from (1-based; default 1)
     pub offset: Option<usize>,
     /// The number of lines to read (defaults to 2000)
     pub limit: Option<usize>,
@@ -142,19 +142,22 @@ impl Tool for ReadTool {
         let content = fs::read_to_string(&filepath)?;
         let lines: Vec<&str> = content.lines().collect();
 
-        let offset = params.offset.unwrap_or(0);
+        let offset = params.offset.unwrap_or(1);
         let limit = params.limit.unwrap_or(DEFAULT_READ_LIMIT);
 
+        // Convert 1-based offset to 0-based skip count (matches OpenCode behaviour)
+        let skip = offset.saturating_sub(1);
+
         // Get the requested window
-        let _end = std::cmp::min(offset + limit, lines.len());
-        let window: Vec<&str> = lines.iter().skip(offset).take(limit).copied().collect();
+        let _end = std::cmp::min(skip + limit, lines.len());
+        let window: Vec<&str> = lines.iter().skip(skip).take(limit).copied().collect();
 
         // Format with line numbers
         let formatted: Vec<String> = window
             .iter()
             .enumerate()
             .map(|(i, line)| {
-                let line_num = offset + i + 1;
+                let line_num = skip + i + 1;
                 let truncated = if line.len() > MAX_LINE_LENGTH {
                     format!("{}...", &line[..MAX_LINE_LENGTH])
                 } else {
@@ -165,7 +168,7 @@ impl Tool for ReadTool {
             .collect();
 
         let total_lines = lines.len();
-        let last_read_line = offset + window.len();
+        let last_read_line = skip + window.len();
         let has_more_lines = total_lines > last_read_line;
 
         let mut output = String::from("<file>\n");
