@@ -319,6 +319,7 @@ mod tests {
 
         let mut tool = ReadTool::new();
         let state = Arc::new(Mutex::new(crate::state::ToolState::new()));
+        // offset=1 is 1-based: start at line 1 (default, shows all lines)
         let args = ToolArgs::with_named_args(
             vec![temp_file.path().to_str().unwrap().to_string()],
             vec![("offset".to_string(), "1".to_string())]
@@ -328,8 +329,21 @@ mod tests {
 
         let result = tool.execute(&args, &state).unwrap();
         assert!(result.success);
-        assert!(!result.message.contains("00001| line 1"));
-        assert!(result.message.contains("00002| line 2"));
+        assert!(result.message.contains("00001| line 1"));
+
+        // offset=2: skip line 1, start at line 2
+        let args2 = ToolArgs::with_named_args(
+            vec![temp_file.path().to_str().unwrap().to_string()],
+            vec![("offset".to_string(), "2".to_string())]
+                .into_iter()
+                .collect(),
+        );
+
+        let result2 = tool.execute(&args2, &state).unwrap();
+        assert!(result2.success);
+        assert!(!result2.message.contains("00001| line 1"));
+        assert!(result2.message.contains("00002| line 2"));
+        assert!(result2.message.contains("00003| line 3"));
     }
 
     #[test]
