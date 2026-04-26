@@ -56,17 +56,26 @@ impl Tool for EditTool {
     }
 
     fn validate_args(&self, args: &ToolArgs) -> Result<(), ToolError> {
-        if args.get_named_arg("file_path").is_none() && args.args.is_empty() {
+        if args.get_named_arg("file_path").is_none()
+            && args.get_named_arg("filePath").is_none()
+            && args.args.is_empty()
+        {
             return Err(ToolError::InvalidArgs {
                 message: "edit tool requires a 'file_path' argument".to_string(),
             });
         }
-        if args.get_named_arg("old_string").is_none() && args.args.len() < 2 {
+        if args.get_named_arg("old_string").is_none()
+            && args.get_named_arg("oldString").is_none()
+            && args.args.len() < 2
+        {
             return Err(ToolError::InvalidArgs {
                 message: "edit tool requires an 'old_string' argument".to_string(),
             });
         }
-        if args.get_named_arg("new_string").is_none() && args.args.len() < 3 {
+        if args.get_named_arg("new_string").is_none()
+            && args.get_named_arg("newString").is_none()
+            && args.args.len() < 3
+        {
             return Err(ToolError::InvalidArgs {
                 message: "edit tool requires a 'new_string' argument".to_string(),
             });

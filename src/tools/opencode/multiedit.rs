@@ -64,7 +64,10 @@ impl Tool for MultiEditTool {
     }
 
     fn validate_args(&self, args: &ToolArgs) -> Result<(), ToolError> {
-        if args.get_named_arg("file_path").is_none() && args.args.is_empty() {
+        if args.get_named_arg("file_path").is_none()
+            && args.get_named_arg("filePath").is_none()
+            && args.args.is_empty()
+        {
             return Err(ToolError::InvalidArgs {
                 message: "multiedit tool requires a 'file_path' argument".to_string(),
             });
