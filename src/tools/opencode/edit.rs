@@ -251,6 +251,13 @@ pub fn replace_in_content(
         }
     }
 
+    // Try indentation-flexible matching: strip minimum common indentation before comparing
+    for replaced in indentation_flexible_replacer(content, old_string) {
+        if let Some(new_content) = try_replace(content, &replaced, new_string, replace_all)? {
+            return Ok(new_content);
+        }
+    }
+
     // Try escape-normalized matching: unescape literal \\n, \\t, \\r sequences
     // that LLMs sometimes emit due to JSON double-escaping
     let unescaped = unescape_string(old_string);
@@ -303,8 +310,54 @@ fn try_replace(
     Ok(None)
 }
 
-/// Unescape literal escape sequences that LLMs may emit due to JSON double-escaping.
-/// Converts the 2-char sequences \\n, \\t, \\r, \\" into their actual control characters.
+/// Indentation-flexible replacer: strips minimum common indentation before comparing.
+/// Handles cases where LLMs copy code with different indentation (2-space vs 4-space).
+fn indentation_flexible_replacer(content: &str, find: &str) -> Vec<String> {
+    let mut results = Vec::new();
+
+    let min_indent = |s: &str| -> usize {
+        s.lines()
+            .filter(|l| !l.trim().is_empty())
+            .map(|l| l.len() - l.trim_start().len())
+            .min()
+            .unwrap_or(0)
+    };
+
+    let strip_indent = |s: &str, n: usize| -> String {
+        s.lines()
+            .map(|l| if l.len() >= n { &l[n..] } else { l.trim_start() })
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+
+    let find_stripped = strip_indent(find, min_indent(find));
+    if find_stripped == find {
+        // Already at minimum indentation — nothing new to try
+        return results;
+    }
+
+    let find_lines: Vec<&str> = find_stripped.split('\n').collect();
+    if find_lines.is_empty() {
+        return results;
+    }
+
+    let content_lines: Vec<&str> = content.split('\n').collect();
+    if content_lines.len() < find_lines.len() {
+        return results;
+    }
+
+    for i in 0..=content_lines.len() - find_lines.len() {
+        let block: String = content_lines[i..i + find_lines.len()].join("\n");
+        let block_stripped = strip_indent(&block, min_indent(&block));
+        if block_stripped.replace("\r\n", "\n").trim() == find_stripped.trim() {
+            results.push(block);
+        }
+    }
+
+    results
+}
+
+/// Unescape literal escape sequences that LLMs may emit due to JSON double-escaping./// Converts the 2-char sequences \\n, \\t, \\r, \\" into their actual control characters.
 fn unescape_string(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     let mut chars = s.chars().peekable();
