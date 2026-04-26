@@ -15,10 +15,13 @@ use std::sync::{Arc, Mutex};
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct EditOperation {
     /// The text to replace
+    #[serde(alias = "oldString")]
     pub old_string: String,
     /// The text to replace it with (must be different from oldString)
+    #[serde(alias = "newString")]
     pub new_string: String,
     /// Replace all occurrences of oldString (default false)
+    #[serde(alias = "replaceAll")]
     pub replace_all: Option<bool>,
 }
 
