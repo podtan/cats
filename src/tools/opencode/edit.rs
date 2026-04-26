@@ -293,14 +293,16 @@ fn try_replace(
 /// Line-trimmed replacer: matches ignoring leading/trailing whitespace on each line
 fn line_trimmed_replacer<'a>(content: &'a str, find: &'a str) -> Vec<String> {
     let mut results = Vec::new();
-    let original_lines: Vec<&str> = content.lines().collect();
-    let search_lines: Vec<&str> = find.lines().collect();
+    // Use split('\n') instead of lines() to preserve \r on CRLF files;
+    // joining with "\n" then reconstructs the exact original substring.
+    let original_lines: Vec<&str> = content.split('\n').collect();
+    let search_lines: Vec<&str> = find.split('\n').collect();
 
     if search_lines.is_empty() {
         return results;
     }
 
-    let search_lines: Vec<&str> = if search_lines.last().map(|l| l.is_empty()) == Some(true) {
+    let search_lines: Vec<&str> = if search_lines.last().map(|l| l.trim().is_empty()) == Some(true) {
         search_lines[..search_lines.len() - 1].to_vec()
     } else {
         search_lines
@@ -314,6 +316,7 @@ fn line_trimmed_replacer<'a>(content: &'a str, find: &'a str) -> Vec<String> {
         let mut matches = true;
 
         for (j, search_line) in search_lines.iter().enumerate() {
+            // .trim() strips both leading/trailing whitespace AND \r
             if original_lines[i + j].trim() != search_line.trim() {
                 matches = false;
                 break;
@@ -321,7 +324,8 @@ fn line_trimmed_replacer<'a>(content: &'a str, find: &'a str) -> Vec<String> {
         }
 
         if matches {
-            // Extract the original matched content
+            // original_lines[k] retains \r for CRLF files, so joining with \n
+            // produces the exact original substring (e.g. "line1\r\nline2\r")
             let matched: String = original_lines[i..i + search_lines.len()].join("\n");
             results.push(matched);
         }
@@ -334,20 +338,21 @@ fn line_trimmed_replacer<'a>(content: &'a str, find: &'a str) -> Vec<String> {
 fn whitespace_normalized_replacer<'a>(content: &'a str, find: &'a str) -> Vec<String> {
     let mut results = Vec::new();
 
+    // split_whitespace already treats \r as whitespace, so normalization works on CRLF too
     let normalize = |s: &str| s.split_whitespace().collect::<Vec<_>>().join(" ");
     let normalized_find = normalize(find);
 
-    // Single line match
+    // Single line match — use lines() here since single-line \r stripping is fine
     for line in content.lines() {
         if normalize(line) == normalized_find {
             results.push(line.to_string());
         }
     }
 
-    // Multi-line match
-    let find_lines: Vec<&str> = find.lines().collect();
+    // Multi-line match — use split('\n') to preserve \r so the joined block matches original
+    let find_lines: Vec<&str> = find.split('\n').collect();
     if find_lines.len() > 1 {
-        let content_lines: Vec<&str> = content.lines().collect();
+        let content_lines: Vec<&str> = content.split('\n').collect();
 
         if content_lines.len() >= find_lines.len() {
             for i in 0..=content_lines.len() - find_lines.len() {
@@ -367,22 +372,26 @@ fn trimmed_boundary_replacer<'a>(content: &'a str, find: &'a str) -> Vec<String>
     let mut results = Vec::new();
     let trimmed_find = find.trim();
 
-    // Try direct trimmed match
+    // Try direct trimmed match — also try CRLF variant for CRLF files
+    let trimmed_find_crlf = trimmed_find.replace('\n', "\r\n");
     if content.contains(trimmed_find) {
         results.push(trimmed_find.to_string());
+    } else if content.contains(trimmed_find_crlf.as_str()) {
+        results.push(trimmed_find_crlf);
     }
 
-    // Try block match where the block's trimmed content matches
-    let find_lines: Vec<&str> = find.lines().collect();
+    // Try block match — use split('\n') to preserve \r so joined block matches original
+    let find_lines: Vec<&str> = find.split('\n').collect();
     if find_lines.is_empty() {
         return results;
     }
-    let content_lines: Vec<&str> = content.lines().collect();
+    let content_lines: Vec<&str> = content.split('\n').collect();
 
     if content_lines.len() >= find_lines.len() {
         for i in 0..=content_lines.len() - find_lines.len() {
             let block: String = content_lines[i..i + find_lines.len()].join("\n");
-            if block.trim() == trimmed_find {
+            // Normalize CRLF before trimmed comparison so CRLF blocks match LF find strings
+            if block.replace("\r\n", "\n").trim() == trimmed_find {
                 results.push(block);
             }
         }
