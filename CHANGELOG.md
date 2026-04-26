@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.16] - 2026-04-26
+
+### Fixed
+- **edit/read/write/multiedit: camelCase field names rejected by validate_args** — `filePath`, `oldString`,
+  `newString` were silently blocked before reaching the `parse_*_args` functions that already handled them.
+  Now `validate_args` accepts both snake_case and camelCase variants for all four tools.
+- **multiedit: camelCase fields in edits array** — `EditOperation` deserialization failed with
+  `missing field 'old_string'` when LLMs sent `oldString`/`newString`/`replaceAll`. Added
+  `#[serde(alias)]` attributes to accept both naming conventions.
+- **edit: CRLF line-ending corruption in fallback strategies** — `line_trimmed_replacer`,
+  `whitespace_normalized_replacer`, and `trimmed_boundary_replacer` used `str::lines()` (strips `\r`)
+  then reconstructed blocks with `join("\n")`, making `str::find` fail on CRLF files. Switched to
+  `split('\n')` throughout so `\r` is preserved in reconstructed substrings.
+- **edit: multiple-match early exit blocked fallback strategies** — `replace_in_content` returned
+  `Err("Found multiple matches")` immediately when the exact string appeared more than once, before
+  trying any fuzzy fallback. The error is now only raised after all strategies are exhausted without
+  finding a unique match (mirrors OpenCode behaviour).
+- **read: offset was 0-based instead of 1-based** — LLMs trained on OpenCode expect `offset=1` to
+  mean "start at line 1", but cats treated it as "skip 1 line". Changed to 1-based: `skip = offset - 1`.
+
+### Added
+- **edit: EscapeNormalizedReplacer** — new fallback strategy that unescapes literal `\n`, `\t`, `\r`, `\"`
+  sequences LLMs sometimes emit due to JSON double-escaping, then retries the replacement.
+- **edit: IndentationFlexibleReplacer** — new fallback strategy that strips minimum common indentation
+  from both the search string and candidate blocks before comparing, tolerating 2-space vs 4-space
+  mismatches and copy-paste indentation drift.
+- **edit: BlockAnchorReplacer** — new fallback strategy that locates blocks by matching trimmed
+  first/last lines (anchors), then scores middle-line similarity using Levenshtein distance (via the
+  existing `edit-distance` crate). Accepts the best candidate above a 30% threshold when multiple
+  anchor matches exist, enabling fuzzy matching on slightly-stale code blocks.
+
 ## [0.1.15] - 2026-04-15
 
 ### Added

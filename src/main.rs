@@ -23,7 +23,7 @@ async fn main() -> anyhow::Result<()> {
         .collect();
     
     let mut app = Command::new("cats")
-        .version("0.1.1")
+        .version(env!("CARGO_PKG_VERSION"))
         .about("Coding Agent ToolS - A comprehensive toolkit for building AI-powered coding agents")
         .subcommand_required(true)
         .arg_required_else_help(true);
