@@ -258,6 +258,13 @@ pub fn replace_in_content(
         }
     }
 
+    // Try block-anchor fuzzy matching: match by first/last line anchors + Levenshtein middle
+    if let Some(replaced) = block_anchor_replacer(content, old_string) {
+        if let Some(new_content) = try_replace(content, &replaced, new_string, replace_all)? {
+            return Ok(new_content);
+        }
+    }
+
     // Try escape-normalized matching: unescape literal \\n, \\t, \\r sequences
     // that LLMs sometimes emit due to JSON double-escaping
     let unescaped = unescape_string(old_string);
@@ -355,6 +362,76 @@ fn indentation_flexible_replacer(content: &str, find: &str) -> Vec<String> {
     }
 
     results
+}
+
+/// Block-anchor replacer: locates blocks matching first/last trimmed lines, then scores
+/// middle lines by Levenshtein similarity. Returns the best unique match above threshold.
+/// Mirrors OpenCode's `BlockAnchorReplacer`.
+fn block_anchor_replacer(content: &str, find: &str) -> Option<String> {
+    let find_lines: Vec<&str> = find.split('\n').collect();
+    if find_lines.len() < 2 {
+        return None;
+    }
+
+    let first_anchor = find_lines.first()?.trim();
+    let last_anchor = find_lines.last()?.trim();
+    let n = find_lines.len();
+
+    let content_lines: Vec<&str> = content.split('\n').collect();
+    if content_lines.len() < n {
+        return None;
+    }
+
+    // Similarity: 1.0 = identical, 0.0 = completely different
+    let similarity = |a: &str, b: &str| -> f64 {
+        if a.is_empty() && b.is_empty() {
+            return 1.0;
+        }
+        let dist = edit_distance::edit_distance(a, b);
+        let max_len = a.len().max(b.len());
+        if max_len == 0 { 1.0 } else { 1.0 - dist as f64 / max_len as f64 }
+    };
+
+    let middle_score = |block_lines: &[&str]| -> f64 {
+        if block_lines.len() <= 2 {
+            return 1.0;
+        }
+        let middle_block = &block_lines[1..block_lines.len() - 1];
+        let middle_find = &find_lines[1..find_lines.len() - 1];
+        let pairs = middle_block.iter().zip(middle_find.iter());
+        let total: f64 = pairs.map(|(b, f)| similarity(b.trim(), f.trim())).sum();
+        total / middle_find.len() as f64
+    };
+
+    let mut candidates: Vec<(usize, f64)> = Vec::new();
+
+    for i in 0..=content_lines.len() - n {
+        let block = &content_lines[i..i + n];
+        if block.first()?.trim() != first_anchor {
+            continue;
+        }
+        if block.last()?.trim() != last_anchor {
+            continue;
+        }
+        let score = middle_score(block);
+        candidates.push((i, score));
+    }
+
+    if candidates.is_empty() {
+        return None;
+    }
+
+    // Sort by score descending, pick best
+    candidates.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+    let (best_idx, best_score) = candidates[0];
+
+    // Require ≥30% similarity when multiple candidates; any match is ok for a single candidate
+    let threshold = if candidates.len() > 1 { 0.3 } else { 0.0 };
+    if best_score < threshold {
+        return None;
+    }
+
+    Some(content_lines[best_idx..best_idx + n].join("\n"))
 }
 
 /// Unescape literal escape sequences that LLMs may emit due to JSON double-escaping./// Converts the 2-char sequences \\n, \\t, \\r, \\" into their actual control characters.
