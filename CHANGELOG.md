@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.17] - 2026-04-29
+
+### Fixed
+- **read: panic on multibyte characters at line truncation boundary** — `&line[..MAX_LINE_LENGTH]`
+  sliced by byte index which could fall inside a multibyte UTF-8 character (e.g. em dash `—`).
+  Now uses `char_indices()` to find the nearest valid char boundary before truncating.
+
 ## [0.1.16] - 2026-04-26
 
 ### Fixed
