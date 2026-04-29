@@ -159,7 +159,12 @@ impl Tool for ReadTool {
             .map(|(i, line)| {
                 let line_num = skip + i + 1;
                 let truncated = if line.len() > MAX_LINE_LENGTH {
-                    format!("{}...", &line[..MAX_LINE_LENGTH])
+                    let boundary = line.char_indices()
+                        .map(|(i, _)| i)
+                        .take_while(|&i| i < MAX_LINE_LENGTH)
+                        .last()
+                        .unwrap_or(0);
+                    format!("{}...", &line[..boundary])
                 } else {
                     line.to_string()
                 };
