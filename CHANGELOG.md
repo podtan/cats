@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.20] - 2026-04-29
+
+### Fixed
+- **executor: compact log shows `__truncated` marker instead of `{}`** — when tool call
+  arguments fail JSON parsing (e.g. truncated by max_tokens), the compact log now records
+  `{"__truncated": true, "__len": N}` so the log clearly shows a truncation occurred
+  rather than silently displaying empty arguments.
+- **executor: EOF parse errors produce actionable message** — when the LLM response is
+  truncated mid-JSON (detected via `EOF while parsing`), the error returned to the LLM now
+  reads: `"tool call was truncated (response too large — N bytes). Break the content into
+  smaller pieces or use bash with heredoc."` Applies to all tools (`write`, `bash`,
+  `edit`, etc.) via both `execute_tool_calls` and `execute_tool_calls_structured`.
+
 ## [0.1.19] - 2026-04-29
 
 ### Fixed

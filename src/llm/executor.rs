@@ -91,11 +91,10 @@ pub fn execute_tool_calls(
         let tool_name = &tool_call.name;
         let tool_args_str = &tool_call.arguments;
 
-        // Log the compact tool call JSON
-        let compact_json = serde_json::json!({
-            "name": tool_name,
-            "arguments": serde_json::from_str::<Value>(tool_args_str).unwrap_or(serde_json::json!({}))
-        });
+        // Log the compact tool call JSON (mark as truncated when args fail to parse)
+        let compact_args = serde_json::from_str::<Value>(tool_args_str)
+            .unwrap_or_else(|_| serde_json::json!({"__truncated": true, "__len": tool_args_str.len()}));
+        let compact_json = serde_json::json!({"name": tool_name, "arguments": compact_args});
         if let Ok(compact_str) = serde_json::to_string(&compact_json) {
             callback.on_compact_log(&compact_str);
         }
@@ -105,7 +104,15 @@ pub fn execute_tool_calls(
         let args: Value = match serde_json::from_str(tool_args_str) {
             Ok(args) => args,
             Err(e) => {
-                let error_msg = format!("Failed to parse tool arguments for {}: {}", tool_name, e);
+                let is_eof = e.to_string().contains("EOF");
+                let error_msg = if is_eof {
+                    format!(
+                        "Failed to parse tool arguments for {}: tool call was truncated (response too large — {} bytes). Break the content into smaller pieces or use bash with heredoc.",
+                        tool_name, tool_args_str.len()
+                    )
+                } else {
+                    format!("Failed to parse tool arguments for {}: {}", tool_name, e)
+                };
                 callback.on_tool_complete(tool_name, tool_args_str, &error_msg, false);
                 results.push(format!("Tool: {}\nError: {}", tool_name, error_msg));
                 continue;
@@ -169,11 +176,10 @@ pub fn execute_tool_calls_structured(
         let tool_args_str = &tool_call.arguments;
         let tool_call_id = tool_call.id.clone();
 
-        // Log the compact tool call JSON
-        let compact_json = serde_json::json!({
-            "name": tool_name,
-            "arguments": serde_json::from_str::<Value>(tool_args_str).unwrap_or(serde_json::json!({}))
-        });
+        // Log the compact tool call JSON (mark as truncated when args fail to parse)
+        let compact_args = serde_json::from_str::<Value>(tool_args_str)
+            .unwrap_or_else(|_| serde_json::json!({"__truncated": true, "__len": tool_args_str.len()}));
+        let compact_json = serde_json::json!({"name": tool_name, "arguments": compact_args});
         if let Ok(compact_str) = serde_json::to_string(&compact_json) {
             callback.on_compact_log(&compact_str);
         }
@@ -183,7 +189,15 @@ pub fn execute_tool_calls_structured(
         let args: Value = match serde_json::from_str(tool_args_str) {
             Ok(args) => args,
             Err(e) => {
-                let error_msg = format!("Failed to parse tool arguments for {}: {}", tool_name, e);
+                let is_eof = e.to_string().contains("EOF");
+                let error_msg = if is_eof {
+                    format!(
+                        "Failed to parse tool arguments for {}: tool call was truncated (response too large — {} bytes). Break the content into smaller pieces or use bash with heredoc.",
+                        tool_name, tool_args_str.len()
+                    )
+                } else {
+                    format!("Failed to parse tool arguments for {}: {}", tool_name, e)
+                };
                 callback.on_tool_complete(tool_name, tool_args_str, &error_msg, false);
                 results.push(ToolExecutionResult {
                     tool_call_id,
