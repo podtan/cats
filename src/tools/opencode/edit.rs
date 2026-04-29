@@ -282,7 +282,9 @@ pub fn replace_in_content(
         ));
     }
 
-    Err(anyhow::anyhow!("oldString not found in content"))
+    Err(anyhow::anyhow!(
+        "oldString not found in content. Use the read tool to get the exact current file content before editing — do not construct oldString from memory."
+    ))
 }
 
 fn try_replace(

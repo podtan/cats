@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.19] - 2026-04-29
+
+### Fixed
+- **multiedit: atomic failure message** — when one edit in a `multiedit` batch fails, the error now
+  explicitly states that no changes were written to disk and instructs the LLM to re-submit all edits
+  with a corrected `oldString` rather than assuming earlier edits were applied.
+- **edit/multiedit: oldString not found hint** — error message now tells the LLM to use the `read`
+  tool to fetch exact current file content instead of constructing `oldString` from memory.
+
 ## [0.1.18] - 2026-04-29
 
 ### Fixed

@@ -149,7 +149,10 @@ impl Tool for MultiEditTool {
                     &edit.new_string,
                     edit.replace_all.unwrap_or(false),
                 )
-                .map_err(|e| anyhow::anyhow!("Edit {}: {}", i + 1, e))?
+                .map_err(|e| anyhow::anyhow!(
+                    "Edit {} failed: {}. No changes were written to disk (multiedit is atomic — all edits are discarded on failure). Do NOT retry edits that were listed before this one; re-submit all edits with corrected oldString.",
+                    i + 1, e
+                ))?
             };
         }
 
