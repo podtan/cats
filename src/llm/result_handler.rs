@@ -41,7 +41,12 @@ pub fn handle_large_result(
         if config.truncate_enabled {
             // Truncate and add warning message for LLM
             let truncated = if result_message.len() > config.max_size_bytes {
-                &result_message[..config.max_size_bytes]
+                let b = result_message.char_indices()
+                    .map(|(i, _)| i)
+                    .take_while(|&i| i < config.max_size_bytes)
+                    .last()
+                    .unwrap_or(0);
+                &result_message[..b]
             } else {
                 result_message
             };

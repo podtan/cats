@@ -154,7 +154,12 @@ impl Tool for GrepTool {
 
                     if regex.is_match(line) {
                         let truncated_line = if line.len() > MAX_LINE_LENGTH {
-                            format!("{}...", &line[..MAX_LINE_LENGTH])
+                            let b = line.char_indices()
+                                .map(|(i, _)| i)
+                                .take_while(|&i| i < MAX_LINE_LENGTH)
+                                .last()
+                                .unwrap_or(0);
+                            format!("{}...", &line[..b])
                         } else {
                             line.to_string()
                         };
