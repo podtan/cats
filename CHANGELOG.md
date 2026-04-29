@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.18] - 2026-04-29
+
+### Fixed
+- **grep: panic on multibyte characters at line truncation boundary** — `&line[..MAX_LINE_LENGTH]`
+  sliced by byte index. Now uses `char_indices()` to find the nearest valid char boundary.
+- **result_handler: panic on multibyte characters at result truncation boundary** — `&result_message[..max_size_bytes]`
+  sliced by byte index. Now uses `char_indices()` to find the nearest valid char boundary.
+
 ## [0.1.17] - 2026-04-29
 
 ### Fixed
