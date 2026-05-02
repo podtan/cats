@@ -275,10 +275,31 @@ pub fn replace_in_content(
     }
 
     // If the exact string was present more than once but no fuzzy strategy found a unique match,
-    // report the ambiguity (consistent with OpenCode's behaviour).
+    // report the ambiguity with location info so the LLM can fix its oldString immediately.
     if !replace_all && content.matches(old_string).count() > 1 {
+        let lines: Vec<&str> = content.lines().collect();
+        let mut locations = Vec::new();
+        let mut search = content;
+        let mut offset = 0usize;
+        while let Some(pos) = search.find(old_string) {
+            let abs = offset + pos;
+            let line_no = content[..abs].matches('\n').count() + 1;
+            // Collect 2 lines before and after the match for context
+            let ctx_start = line_no.saturating_sub(3);
+            let ctx_end = (line_no + old_string.matches('\n').count() + 2).min(lines.len());
+            let ctx: Vec<String> = lines[ctx_start..ctx_end]
+                .iter()
+                .enumerate()
+                .map(|(i, l)| format!("{:>5}| {}", ctx_start + i + 1, l))
+                .collect();
+            locations.push(format!("  Match at line {}:\n{}", line_no, ctx.join("\n")));
+            offset = abs + old_string.len().max(1);
+            search = &content[offset..];
+        }
         return Err(anyhow::anyhow!(
-            "Found multiple matches for oldString. Provide more surrounding lines in oldString to identify the correct match."
+            "Found {} matches for oldString. Add more surrounding lines to make it unique — DO NOT fall back to bash append (>>) which creates duplicates. Match locations:\n{}",
+            locations.len(),
+            locations.join("\n")
         ));
     }
 
@@ -647,7 +668,7 @@ mod tests {
 
         let result = tool.execute(&args, &state);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("multiple matches"));
+        assert!(result.unwrap_err().to_string().contains("matches for oldString"));
     }
 
     #[test]

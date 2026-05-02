@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.21] - 2026-05-02
+
+### Fixed
+- **edit: "multiple matches" error now shows line numbers and context** — when
+  `oldString` appears more than once the error now reports the count, line number
+  of every occurrence, and 2–3 lines of surrounding context so the LLM can
+  immediately construct a unique `oldString`. The message also explicitly warns
+  against falling back to bash `>>` append (which causes duplicate content).
+
 ## [0.1.20] - 2026-04-29
 
 ### Fixed
