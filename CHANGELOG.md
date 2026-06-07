@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.23] - 2026-06-07
+
+### Fixed
+- **bash tool: use PowerShell instead of CMD on Windows** — switched from `cmd.exe /C`
+  to `powershell.exe -NoProfile -Command` on Windows. CMD's quoting rules break many
+  commands sent by the LLM: `%` is expanded as environment variables (breaking
+  `git log --format="%an"`), single quotes are not a quoting mechanism, and
+  backslash-escaping of quotes causes double-escaping. PowerShell treats `%` as a
+  literal character, supports single-quoted strings with no expansion, and has
+  predictable quoting behavior. Linux/macOS behavior is unchanged (`/bin/sh -c`).
+
 ## [0.1.22] - 2026-05-06
 
 ### Fixed
@@ -17,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   not respected during the walk. `path` parameter is now optional — defaults to
   the current working directory when omitted.
 
+## [0.1.21] - 2026-05-02
 
 ### Fixed
 - **edit: "multiple matches" error now shows line numbers and context** — when

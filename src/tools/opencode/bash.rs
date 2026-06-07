@@ -93,17 +93,22 @@ impl Tool for BashTool {
 
         let timeout = params.timeout.unwrap_or(DEFAULT_TIMEOUT_MS);
 
-        // Determine the shell
-        let (shell, flag) = if cfg!(target_os = "windows") {
-            ("cmd.exe", "/C")
+        // Determine the shell — use PowerShell on Windows to avoid CMD quoting pitfalls:
+        // CMD expands %VAR%, has no single-quote support, and mangles backslash-escaped quotes.
+        // PowerShell has predictable quoting rules and treats % as a literal character.
+        let mut cmd = if cfg!(target_os = "windows") {
+            let mut c = Command::new("powershell.exe");
+            c.arg("-NoProfile").arg("-Command");
+            c
         } else {
-            ("/bin/sh", "-c")
+            let mut c = Command::new("/bin/sh");
+            c.arg("-c");
+            c
         };
 
         let start = Instant::now();
 
-        let mut child = Command::new(shell)
-            .arg(flag)
+        let mut child = cmd
             .arg(&params.command)
             .current_dir(&workdir)
             .stdout(Stdio::piped())
