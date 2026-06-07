@@ -4,22 +4,22 @@
 
 use crate::core::{Tool, ToolArgs, ToolError, ToolResult};
 use anyhow::Result;
+use ignore::{overrides::OverrideBuilder, WalkBuilder};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use walkdir::WalkDir;
 
 const LIMIT: usize = 100;
 
 /// Glob tool parameters
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct GlobParams {
-    /// The glob pattern to match files against
+    /// The glob pattern to match files against (gitignore/wildmatch syntax, e.g. **/*.rs, **/nghr/**)
     pub pattern: String,
-    /// The directory to search in. For current directory send ".". If starts with "/" it is absolute, if not it is relative.
-    pub path: String,
+    /// The directory to search in. Defaults to current working directory when omitted. If starts with "/" it is absolute, if not it is relative.
+    pub path: Option<String>,
 }
 
 /// Glob tool for finding files by pattern
@@ -47,7 +47,7 @@ impl Tool for GlobTool {
     }
 
     fn description(&self) -> &str {
-        "Fast file pattern matching tool that works with any codebase size. The 'path' parameter is required. For current directory send '.'. If starts with '/' it is absolute, if not it is relative."
+        "Fast file pattern matching tool that works with any codebase size. Uses gitignore/wildmatch syntax (e.g. **/*.rs, **/src/**, *.toml). 'path' is optional — defaults to current working directory. Supports recursive wildcards like **/dir/**."
     }
 
     fn signature(&self) -> &str {
@@ -71,42 +71,47 @@ impl Tool for GlobTool {
             .map(|s| s.working_directory.clone())
             .unwrap_or_else(|_| std::env::current_dir().unwrap_or_default());
 
-        let search_path = PathBuf::from(&params.path);
-
-        let search_path = if search_path.is_absolute() {
-            search_path
-        } else {
-            working_dir.join(&search_path)
+        let search_path = match &params.path {
+            Some(p) => {
+                let pb = PathBuf::from(p);
+                if pb.is_absolute() { pb } else { working_dir.join(p) }
+            }
+            None => working_dir.clone(),
         };
 
         let mut files: Vec<(PathBuf, std::time::SystemTime)> = Vec::new();
         let mut truncated = false;
 
-        let pattern = glob::Pattern::new(&params.pattern)
+        // Build gitignore/wildmatch override — positive pattern acts as whitelist
+        let mut ob = OverrideBuilder::new(&search_path);
+        ob.add(&params.pattern)
             .map_err(|e| anyhow::anyhow!("Invalid glob pattern: {}", e))?;
+        let overrides = ob.build()
+            .map_err(|e| anyhow::anyhow!("Failed to build glob override: {}", e))?;
 
-        for entry in WalkDir::new(&search_path)
-            .follow_links(false)
-            .into_iter()
-            .filter_map(|e| e.ok())
-            .filter(|e| e.file_type().is_file())
-        {
+        let walker = WalkBuilder::new(&search_path)
+            .hidden(false)      // include hidden files
+            .git_ignore(false)  // don't respect .gitignore
+            .git_global(false)
+            .git_exclude(false)
+            .ignore(false)      // don't use .ignore files
+            .overrides(overrides)
+            .build();
+
+        for result in walker {
             if files.len() >= LIMIT {
                 truncated = true;
                 break;
             }
-
-            let path = entry.path().to_path_buf();
-
-            // Check if the relative path matches the pattern
-            let relative = path.strip_prefix(&search_path).unwrap_or(&path);
-            if pattern.matches_path(relative) {
-                let mtime = fs::metadata(&path)
-                    .ok()
-                    .and_then(|m| m.modified().ok())
-                    .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
-
-                files.push((path, mtime));
+            if let Ok(entry) = result {
+                if entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
+                    let path = entry.path().to_path_buf();
+                    let mtime = fs::metadata(&path)
+                        .ok()
+                        .and_then(|m| m.modified().ok())
+                        .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+                    files.push((path, mtime));
+                }
             }
         }
 
@@ -165,8 +170,7 @@ fn parse_glob_args(args: &ToolArgs) -> Result<GlobParams> {
     let path = args
         .get_named_arg("path")
         .cloned()
-        .filter(|s| !s.is_empty())
-        .ok_or_else(|| anyhow::anyhow!("path parameter is required. Send '.' for current directory"))?;
+        .filter(|s| !s.is_empty());
 
     Ok(GlobParams { pattern, path })
 }
@@ -257,6 +261,30 @@ mod tests {
         assert!(result.success);
         assert!(result.message.contains("main.rs"));
         assert!(result.message.contains("mod.rs"));
+    }
+
+    #[test]
+    fn test_glob_wildmatch_dir_pattern() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create nested structure with a named subdirectory
+        fs::create_dir_all(temp_dir.path().join("nghr/src")).unwrap();
+        fs::write(temp_dir.path().join("nghr/src/main.rs"), "").unwrap();
+        fs::write(temp_dir.path().join("other.rs"), "").unwrap();
+
+        let mut tool = GlobTool::new();
+        let state = Arc::new(Mutex::new(crate::state::ToolState::new()));
+        let args = ToolArgs::with_named_args(
+            vec!["**/nghr/**".to_string()],
+            vec![("path".to_string(), temp_dir.path().to_str().unwrap().to_string())]
+                .into_iter()
+                .collect(),
+        );
+
+        let result = tool.execute(&args, &state).unwrap();
+        assert!(result.success);
+        assert!(result.message.contains("main.rs"));
+        assert!(!result.message.contains("other.rs"));
     }
 
     #[test]

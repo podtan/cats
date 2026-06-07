@@ -7,7 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.21] - 2026-05-02
+## [0.1.22] - 2026-05-06
+
+### Fixed
+- **glob: replace `glob` crate with `ignore` for gitignore/wildmatch compatibility** —
+  the `glob` crate's POSIX syntax rejected patterns like `**/nghr/**` with a hard
+  error. Replaced with the `ignore` crate (same library ripgrep uses) so all
+  gitignore/wildmatch patterns are supported. `.gitignore` files are intentionally
+  not respected during the walk. `path` parameter is now optional — defaults to
+  the current working directory when omitted.
+
 
 ### Fixed
 - **edit: "multiple matches" error now shows line numbers and context** — when
