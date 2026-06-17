@@ -98,7 +98,7 @@ impl Tool for BashTool {
         // PowerShell has predictable quoting rules and treats % as a literal character.
         let mut cmd = if cfg!(target_os = "windows") {
             let mut c = Command::new("powershell.exe");
-            c.arg("-NoProfile").arg("-Command");
+            c.arg("-NoProfile").arg("-NonInteractive").arg("-Command");
             c
         } else {
             let mut c = Command::new("/bin/sh");
@@ -111,6 +111,7 @@ impl Tool for BashTool {
         let mut child = cmd
             .arg(&params.command)
             .current_dir(&workdir)
+            .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
@@ -204,7 +205,10 @@ impl Tool for BashTool {
             }
             if start.elapsed() > Duration::from_millis(timeout) {
                 result_output.push_str(&format!(
-                    "bash tool terminated command after exceeding timeout {} ms\n",
+                    "bash tool terminated command after exceeding timeout {} ms. \
+                     If this command is expected to take longer and is not waiting \
+                     for interactive input, retry with a larger timeout value in \
+                     milliseconds.\n",
                     timeout
                 ));
             }
