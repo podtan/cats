@@ -327,9 +327,18 @@ impl Tool for BashTool {
             if start.elapsed() > Duration::from_millis(timeout) {
                 result_output.push_str(&format!(
                     "bash tool terminated command after exceeding timeout {} ms. \
-                     If this command is expected to take longer and is not waiting \
-                     for interactive input, retry with a larger timeout value in \
-                     milliseconds.\n",
+                     This usually means the command is a blocking or interactive \
+                     command (e.g. ssh password prompt, sudo, mysql shell) or a \
+                     long-running process.\n\
+                     If the command needs interactive input, use non-interactive \
+                     alternatives:\n  \
+                     - sshpass -p 'PASS' ssh ...\n  \
+                     - ssh -o BatchMode=yes -o PasswordAuthentication=no ...\n  \
+                     - echo 'PASS' | sudo -S ...\n  \
+                     - Use --yes / -y / --non-interactive flags\n  \
+                     - Use heredocs or pipes to provide input\n\
+                     If the command genuinely needs more time, retry with a \
+                     larger timeout value in milliseconds.\n",
                     timeout
                 ));
             }
