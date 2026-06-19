@@ -20,6 +20,14 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
+/// On Unix, declare the raw `setsid` syscall so we can call it in `pre_exec`
+/// without pulling in the `libc` crate.  This keeps cats dependency-free on
+/// the musl/zigbuild target.
+#[cfg(unix)]
+extern "C" {
+    fn setsid() -> i32;
+}
+
 const MAX_OUTPUT_LENGTH: usize = 30_000;
 const DEFAULT_TIMEOUT_MS: u64 = 120_000; // 2 minutes
 const POLL_INTERVAL: Duration = Duration::from_millis(500);
@@ -159,6 +167,30 @@ impl Tool for BashTool {
         };
 
         let start = Instant::now();
+
+        // On Unix, call `setsid()` in the child process before exec.
+        // This creates a new session with NO controlling terminal, so programs
+        // like `ssh` and `sudo` that open `/dev/tty` directly will fail to do
+        // so — they fall back to writing prompts to piped stderr, where our
+        // interactive-prompt detection catches and kills them.
+        //
+        // Without this, `ssh somehost` writes "Are you sure you want to
+        // continue connecting (yes/no)?" straight to /dev/tty, which:
+        //   1. Corrupts the TUI display (raw text over ratatui alt screen)
+        //   2. Steals keyboard input (ssh reads /dev/tty, starving crossterm)
+        //
+        // This mirrors what OpenCode does implicitly via Node.js `detached: true`
+        // (which internally calls setsid).
+        #[cfg(unix)]
+        {
+            use std::os::unix::process::CommandExt;
+            unsafe {
+                cmd.pre_exec(|| {
+                    setsid();
+                    Ok(())
+                });
+            }
+        }
 
         let mut child = cmd
             .arg(&params.command)

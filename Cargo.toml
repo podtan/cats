@@ -3,7 +3,7 @@
 
 [package]
 name = "cats"
-version = "0.1.26"
+version = "0.1.27"
 edition = "2021"
 description = "Coding Agent ToolS - A comprehensive toolkit for building AI-powered coding agents"
 license = "MIT OR Apache-2.0"
