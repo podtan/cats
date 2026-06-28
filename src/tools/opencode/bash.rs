@@ -4,8 +4,8 @@
 //!
 //! Architecture: stdout/stderr are read in background threads that send lines
 //! through channels. The main loop uses `recv_timeout` so that wall-clock
-//! timeout, cancel-signal, and interactive-prompt detection are all checked
-//! every 500 ms — independent of whether the child process is producing output.
+//! timeout and cancel-signal are checked every 500 ms — independent of
+//! whether the child process is producing output.
 
 use crate::core::{Tool, ToolArgs, ToolError, ToolResult};
 use anyhow::Result;
@@ -31,35 +31,6 @@ extern "C" {
 const MAX_OUTPUT_LENGTH: usize = 30_000;
 const DEFAULT_TIMEOUT_MS: u64 = 120_000; // 2 minutes
 const POLL_INTERVAL: Duration = Duration::from_millis(500);
-
-/// Patterns that indicate the command is waiting for interactive input.
-/// When detected in stdout or stderr, the command is killed immediately.
-const INTERACTIVE_PATTERNS: &[&str] = &[
-    "password:",
-    "Password:",
-    "PASSWORD:",
-    "passphrase",
-    "Enter passphrase",
-    "[Y/n]",
-    "[y/N]",
-    "[yes/no]",
-    "[YES/NO]",
-    "Are you sure",
-    "are you sure",
-    "Verification code:",
-    "Enter MFA",
-    "Username:",
-    "username:",
-    "PIN:",
-    "Enter PIN",
-    "Confirm deletion",
-    "Continue? [Y/n]",
-    "Press any key to continue",
-    "Press ENTER to continue",
-    "Type 'yes' to continue",
-    "Authentication failed",
-    "Permission denied (publickey,password)",
-];
 
 /// Bash tool parameters
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -91,16 +62,6 @@ impl Default for BashTool {
     fn default() -> Self {
         Self::new()
     }
-}
-
-/// Check if a text chunk contains an interactive prompt pattern.
-fn detect_interactive_prompt(text: &str) -> Option<String> {
-    for pattern in INTERACTIVE_PATTERNS {
-        if text.contains(pattern) {
-            return Some(pattern.to_string());
-        }
-    }
-    None
 }
 
 impl Tool for BashTool {
@@ -171,8 +132,7 @@ impl Tool for BashTool {
         // On Unix, call `setsid()` in the child process before exec.
         // This creates a new session with NO controlling terminal, so programs
         // like `ssh` and `sudo` that open `/dev/tty` directly will fail to do
-        // so — they fall back to writing prompts to piped stderr, where our
-        // interactive-prompt detection catches and kills them.
+        // so — they cannot steal keyboard input or corrupt the TUI display.
         //
         // Without this, `ssh somehost` writes "Are you sure you want to
         // continue connecting (yes/no)?" straight to /dev/tty, which:
@@ -205,12 +165,11 @@ impl Tool for BashTool {
         //
         // Each reader thread blocks on `BufReader::lines()` and sends lines
         // through a channel. The main loop uses `recv_timeout(POLL_INTERVAL)`
-        // so it can check timeout / cancel / interactive patterns every 500 ms
+        // so it can check timeout / cancel every 500 ms
         // even when no output is arriving.
         //
         // stdout and stderr lines are interleaved into a single channel with
-        // a Source tag so we preserve origin (useful for pattern detection
-        // and future metadata).
+        // a Source tag so we preserve origin for debugging.
 
         #[derive(Debug)]
         enum Source {
@@ -265,19 +224,10 @@ impl Tool for BashTool {
         let mut output = String::new();
         let mut truncated = false;
         let mut cancelled = false;
-        let mut interactive_detected: Option<String> = None;
 
         loop {
             match rx.recv_timeout(POLL_INTERVAL) {
                 Ok((_source, line)) => {
-                    // Check for interactive prompt patterns before accumulating
-                    if interactive_detected.is_none() {
-                        if let Some(pattern) = detect_interactive_prompt(&line) {
-                            interactive_detected = Some(pattern);
-                            let _ = child.kill();
-                            break;
-                        }
-                    }
                     if output.len() + line.len() + 1 > MAX_OUTPUT_LENGTH {
                         truncated = true;
                         break;
@@ -310,28 +260,6 @@ impl Tool for BashTool {
             let _ = child.wait();
             return Ok(ToolResult::success_with_data(
                 "Command cancelled by user (ESC)".to_string(),
-                serde_json::json!({
-                    "exit_code": -1,
-                    "description": params.description,
-                }),
-            ));
-        }
-
-        // If interactive prompt detected, return descriptive error
-        if let Some(ref pattern) = interactive_detected {
-            let _ = child.wait();
-            return Ok(ToolResult::success_with_data(
-                format!(
-                    "Command appears to require interactive input (detected: \"{}\").\n\n\
-                     Interactive commands are not supported because stdin is set to null.\n\
-                     Use non-interactive alternatives such as:\n  \
-                     - sshpass -p 'PASS' ssh ...\n  \
-                     - ssh -o BatchMode=yes -o PasswordAuthentication=no ...\n  \
-                     - echo 'PASS' | sudo -S ...\n  \
-                     - Use --yes / -y / --non-interactive flags\n  \
-                     - Use heredocs or pipes to provide input\n",
-                    pattern
-                ),
                 serde_json::json!({
                     "exit_code": -1,
                     "description": params.description,
@@ -463,32 +391,4 @@ mod tests {
         assert!(result.is_err());
     }
 
-    #[test]
-    fn test_detect_interactive_prompt_password() {
-        assert_eq!(
-            detect_interactive_prompt("pod@10.2.41.21's password:"),
-            Some("password:".to_string())
-        );
-    }
-
-    #[test]
-    fn test_detect_interactive_prompt_yn() {
-        assert_eq!(
-            detect_interactive_prompt("Do you want to continue? [Y/n]"),
-            Some("[Y/n]".to_string())
-        );
-    }
-
-    #[test]
-    fn test_detect_interactive_prompt_none() {
-        assert_eq!(detect_interactive_prompt("Hello world"), None);
-    }
-
-    #[test]
-    fn test_detect_interactive_prompt_permission_denied() {
-        assert_eq!(
-            detect_interactive_prompt("Permission denied (publickey,password)."),
-            Some("Permission denied (publickey,password)".to_string())
-        );
-    }
 }

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.28] - 2026-06-07
+
+### Removed
+- **bash tool: interactive command detector removed entirely** — the `INTERACTIVE_PATTERNS`
+  list and `detect_interactive_prompt()` function caused excessive false positives. Commands
+  whose output merely contained words like `password:`, `Are you sure`, `[Y/n]`,
+  `Permission denied`, or `Authentication failed` were incorrectly killed and reported as
+  requiring interactive input. For example, `ssh -p 2007 xyz@host` (which exits immediately
+  with "Permission denied (publickey,password)") or any command outputting a new password
+  were wrongly blocked. The `setsid()` call that detaches the child from the controlling
+  terminal remains in place, so truly interactive programs will simply hang until the
+  timeout fires — which is the correct, non-destructive behaviour.
+
 ## [0.1.23] - 2026-06-07
 
 ### Fixed
