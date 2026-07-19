@@ -1,9 +1,10 @@
-//! Assistant content generation for tool calls
+//! Assistant content generation for tool calls.
 //!
-//! Generates human-friendly descriptions of tool calls, similar to
-//! professional AI assistants (Zed, VS Code Copilot).
-
-use serde_json::Value;
+//! When the LLM makes a tool call without providing its own text content,
+//! the OpenAI API still requires an assistant message (it cannot be null).
+//! We return an empty string — the UI already shows tool call status via
+//! ToolPending/ToolDone events with spinners, so verbal narration is
+//! redundant clutter.
 
 /// Simple tool call representation for assistant content generation
 #[derive(Debug, Clone)]
@@ -21,85 +22,13 @@ impl ToolCallInfo {
     }
 }
 
-/// Generate meaningful assistant content based on actual tool calls
+/// Generate assistant content for tool calls.
 ///
-/// This replaces generic "I'll execute the requested tools." with specific descriptions
-/// like professional AI assistants do.
-///
-/// # Arguments
-/// * `tool_calls` - Slice of tool call information
-///
-/// # Returns
-/// * `String` - Human-friendly description of what the tools will do
-pub fn generate_assistant_content(tool_calls: &[ToolCallInfo]) -> String {
-    if tool_calls.is_empty() {
-        return String::new(); // Empty content for tool-only responses
-    }
-
-    match tool_calls.len() {
-        1 => {
-            let tool_call = &tool_calls[0];
-            match tool_call.name.as_str() {
-                "classify_task" => {
-                    "I'll analyze and classify this task to determine the best approach."
-                        .to_string()
-                }
-                "read_file" | "open" => {
-                    if let Ok(args) = serde_json::from_str::<Value>(&tool_call.arguments) {
-                        if let Some(path) = args.get("path").and_then(|p| p.as_str()) {
-                            format!("I'll read the file at `{}`.", path)
-                        } else {
-                            "I'll read the specified file.".to_string()
-                        }
-                    } else {
-                        "I'll read the file for you.".to_string()
-                    }
-                }
-                "write_file" | "create_file" | "overwrite_file" => {
-                    if let Ok(args) = serde_json::from_str::<Value>(&tool_call.arguments) {
-                        if let Some(path) = args.get("path").and_then(|p| p.as_str()) {
-                            format!("I'll write content to `{}`.", path)
-                        } else {
-                            "I'll write to the specified file.".to_string()
-                        }
-                    } else {
-                        "I'll write the file for you.".to_string()
-                    }
-                }
-                "create_directory" => "I'll create the directory structure you need.".to_string(),
-                "run_command" | "execute_command" => {
-                    if let Ok(args) = serde_json::from_str::<Value>(&tool_call.arguments) {
-                        if let Some(command) = args.get("command").and_then(|c| c.as_str()) {
-                            format!("I'll execute the command: `{}`", command)
-                        } else {
-                            "I'll execute the specified command.".to_string()
-                        }
-                    } else {
-                        "I'll execute the command for you.".to_string()
-                    }
-                }
-                "submit" => "Task completed successfully.".to_string(),
-                _ => format!(
-                    "I'll use the {} tool to help with your request.",
-                    tool_call.name
-                ),
-            }
-        }
-        2 => {
-            let tool_names: Vec<&str> = tool_calls.iter().map(|tc| tc.name.as_str()).collect();
-            format!(
-                "I'll help you with that by using {} and {}.",
-                tool_names[0], tool_names[1]
-            )
-        }
-        _ => {
-            let tool_names: Vec<&str> = tool_calls.iter().map(|tc| tc.name.as_str()).collect();
-            format!(
-                "I'll work on this using multiple tools: {}.",
-                tool_names.join(", ")
-            )
-        }
-    }
+/// Returns an empty string — the OpenAI API requires a non-null assistant
+/// message before tool calls, but the actual narration is handled by the
+/// UI layer (tool call spinners, status lines, etc.).
+pub fn generate_assistant_content(_tool_calls: &[ToolCallInfo]) -> String {
+    String::new()
 }
 
 #[cfg(test)]
@@ -109,9 +38,8 @@ mod tests {
     #[test]
     fn test_generate_assistant_content_single() {
         let tool_call = ToolCallInfo::new("read_file", r#"{"path": "/test/file.txt"}"#);
-
         let content = generate_assistant_content(&[tool_call]);
-        assert!(content.contains("I'll read the file at `/test/file.txt`"));
+        assert_eq!(content, "");
     }
 
     #[test]
@@ -120,17 +48,8 @@ mod tests {
             ToolCallInfo::new("read_file", "{}"),
             ToolCallInfo::new("write_file", "{}"),
         ];
-
         let content = generate_assistant_content(&tool_calls);
-        assert!(content.contains("I'll help you with that by using read_file and write_file"));
-    }
-
-    #[test]
-    fn test_generate_assistant_content_classify() {
-        let tool_call = ToolCallInfo::new("classify_task", r#"{"task_type": "bug_fix"}"#);
-
-        let content = generate_assistant_content(&[tool_call]);
-        assert!(content.contains("analyze and classify"));
+        assert_eq!(content, "");
     }
 
     #[test]
