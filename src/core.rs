@@ -216,9 +216,17 @@ impl ToolRegistry {
             })
     }
 
-    /// List all registered tool names
+    /// List all registered tool names in deterministic (sorted) order.
+    ///
+    /// Tools are stored in a `HashMap`, whose iteration order is randomized
+    /// per-process by Rust's default `RandomState`. Returning the keys in
+    /// sorted order guarantees a stable, byte-identical tool list across runs
+    /// and processes — reordering tools changes the first prompt tokens and
+    /// defeats LLM prefix-cache reuse (see nghr issue 1494b6fe).
     pub fn list_tools(&self) -> Vec<String> {
-        self.tools.keys().cloned().collect()
+        let mut names: Vec<String> = self.tools.keys().cloned().collect();
+        names.sort();
+        names
     }
 
     /// Get tool by name
@@ -226,12 +234,24 @@ impl ToolRegistry {
         self.tools.get(name).map(|t| t.as_ref())
     }
 
-    /// Get OpenAI function schemas for all tools
+    /// Get OpenAI function schemas for all tools, sorted by tool name.
+    ///
+    /// Sorted for the same reason as [`ToolRegistry::list_tools`]: the
+    /// underlying `HashMap` iteration order is per-process random, which
+    /// would otherwise produce a different `tools` array (and therefore a
+    /// different system-prompt prefix) on every agent run.
     pub fn get_all_schemas(&self) -> Vec<serde_json::Value> {
-        self.tools
+        let mut schemas: Vec<serde_json::Value> = self
+            .tools
             .values()
             .map(|tool| tool.get_openai_schema())
-            .collect()
+            .collect();
+        schemas.sort_by(|a, b| {
+            let an = a["function"]["name"].as_str().unwrap_or("");
+            let bn = b["function"]["name"].as_str().unwrap_or("");
+            an.cmp(bn)
+        });
+        schemas
     }
 
     /// Get the current tool state
@@ -356,6 +376,32 @@ mod tests {
         // Test tool not found
         let result = registry.execute_tool("nonexistent", &args);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_list_tools_sorted_deterministic() {
+        // Regression test for nghr issue 1494b6fe: the registry stores tools
+        // in a HashMap whose iteration order is per-process random. Sorted
+        // output guarantees a byte-identical tools array across runs, which
+        // is required for LLM prefix-cache reuse.
+        let mut registry = ToolRegistry::new();
+        registry.register(Box::new(MockTool::new("zebra")));
+        registry.register(Box::new(MockTool::new("alpha")));
+        registry.register(Box::new(MockTool::new("mango")));
+        registry.register(Box::new(MockTool::new("bravo")));
+
+        let names = registry.list_tools();
+        assert_eq!(names, vec!["alpha", "bravo", "mango", "zebra"]);
+        // Repeated calls stay identical.
+        assert_eq!(registry.list_tools(), names);
+
+        // Schemas must be sorted by tool name as well.
+        let schemas = registry.get_all_schemas();
+        let schema_names: Vec<&str> = schemas
+            .iter()
+            .map(|s| s["function"]["name"].as_str().unwrap())
+            .collect();
+        assert_eq!(schema_names, vec!["alpha", "bravo", "mango", "zebra"]);
     }
 
     #[test]

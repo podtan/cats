@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.30] - 2026-08-25
+
+### Fixed
+
+- **Deterministic (sorted) tool listing** (nghr 1494b6fe). `ToolRegistry` stores tools in a `HashMap`, and Rust's default `RandomState` gives every process a different iteration order. `list_tools()` and `get_all_schemas()` therefore returned the native tools in a per-run random order, which changed the first system-prompt tokens between agent runs and defeated LLM prefix-cache reuse (each run began with a ~90s full prefill). Both now return tools sorted by name, so the `tools` array is byte-identical across runs and processes. Sorting is applied at the source so every consumer (abk, cats CLI, direct library users) gets a stable order.
+
 ## [0.1.28] - 2026-06-07
 
 ### Removed
