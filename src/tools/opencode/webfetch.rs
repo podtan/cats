@@ -38,11 +38,13 @@ pub struct WebFetchTool {
 
 impl WebFetchTool {
     pub fn new() -> Self {
-        let client = Client::builder()
-            .timeout(DEFAULT_TIMEOUT)
-            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-            .build()
-            .unwrap_or_else(|_| Client::new());
+        // Build OUTSIDE the async context (see build_blocking_client — the
+        // blocking client's runtime creation panics inside an async worker).
+        let client = super::build_blocking_client(
+            Client::builder()
+                .timeout(DEFAULT_TIMEOUT)
+                .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"),
+        );
 
         Self {
             name: "webfetch".to_string(),

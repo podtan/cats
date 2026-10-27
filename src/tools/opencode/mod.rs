@@ -29,6 +29,25 @@ pub use write::WriteTool;
 
 use crate::core::ToolRegistry;
 
+/// Build a `reqwest::blocking::Client` OUTSIDE any async context.
+///
+/// reqwest's blocking client creates its own tokio runtime at build time —
+/// building it inside an async worker PANICS ("Cannot drop a runtime in a
+/// context where blocking is not allowed"; observed with reqwest 0.12.28 +
+/// tokio 1.54.1 when the tool registry is created inside the workflow's
+/// async context — Ravand 2026-10-27). A plain thread has no async
+/// context: the runtime is created and kept there, and only the client
+/// handle crosses back.
+pub(crate) fn build_blocking_client(
+    builder: reqwest::blocking::ClientBuilder,
+) -> reqwest::blocking::Client {
+    std::thread::scope(|s| {
+        s.spawn(move || builder.build().unwrap_or_else(|_| reqwest::blocking::Client::new()))
+            .join()
+            .unwrap_or_else(|_| reqwest::blocking::Client::new())
+    })
+}
+
 /// Initialize the tool registry with OpenCode-compatible tools
 pub fn create_tool_registry() -> ToolRegistry {
     let mut registry = ToolRegistry::new();

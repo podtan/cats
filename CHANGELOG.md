@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.31] - 2026-10-27
+
+### Fixed
+
+- **Blocking-client build PANIC inside the async workflow (Ravand 2026-10-27; trustee 0.23.2 on-device + local repro)** — `WebFetchTool::new` and `WebSearchTool::new` built a `reqwest::blocking::Client` at tool-registry creation time, which runs INSIDE the workflow's async context. reqwest's blocking client creates its own tokio runtime at build time, and with reqwest 0.12.28 + tokio 1.54.1 that build PANICS: "Cannot drop a runtime in a context where blocking is not allowed" (`reqwest::blocking::wait::enter` → `BlockingPool::drop`). Net effect: every workflow run died at tool-registry creation — the engine accepted the command (`StateChanged: Running` reached the WS) and then went silent; the UI showed nothing until a browser refresh (the session state showed the workflow stuck at Running). Fix: a shared `build_blocking_client` helper (opencode/mod.rs) builds the client on a PLAIN THREAD — no async context, so the runtime is created and kept there and only the handle crosses back. Both tools use it; the user-agent/timeout behavior is unchanged.
+
 ## [0.1.30] - 2026-08-25
 
 ### Fixed

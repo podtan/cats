@@ -84,10 +84,9 @@ pub struct WebSearchTool {
 
 impl WebSearchTool {
     pub fn new() -> Self {
-        let client = Client::builder()
-            .timeout(DEFAULT_TIMEOUT)
-            .build()
-            .unwrap_or_else(|_| Client::new());
+        // Build OUTSIDE the async context (see build_blocking_client — the
+        // blocking client's runtime creation panics inside an async worker).
+        let client = super::build_blocking_client(Client::builder().timeout(DEFAULT_TIMEOUT));
 
         Self {
             name: "websearch".to_string(),
